@@ -1,0 +1,31 @@
+{
+  "private": true,
+  "name": "core-web",
+  "version": "0.1.2",
+  "module": "esnext",
+  "type": "module",
+  "exports": {
+    "./deployment": "./dist/deployment/index.js",
+    "./vite-plugins": "./dist/vite-plugins/index.js"
+  },
+  "scripts": {
+    "build:all": "node build/build --all --prod",
+    "build:deployment": "node build/build --deployment --prod",
+    "watch:deployment": "node build/build --deployment --watch --prod"
+  },
+  "devDependencies": {
+    "@types/node": "22.7.4",
+    "typescript": "5.6.2",
+    "vite": "^5.4.8"
+  },
+  "peerDependencies": {
+    "vite": "^5.0.0"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1691.0",
+    "axios": "1.7.7",
+    "cross-env": "7.0.3",
+    "dotenv": "16.4.5",
+    "vite": "^5.0.0"
+  }
+}
