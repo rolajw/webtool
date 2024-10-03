@@ -50,7 +50,7 @@ export const deployCloudFront = async function (settings: DeployCloudFront.Setti
       }
 
       if (item.filepath === path.resolve(settings.dir, 'index.html')) {
-        item.uploadpath = `${webpath}/${indexFile}`.replaceAll('\\','/')
+        item.uploadpath = `${webpath}/${indexFile}`.replaceAll('\\', '/')
       }
 
       return item
@@ -70,7 +70,7 @@ export const deployCloudFront = async function (settings: DeployCloudFront.Setti
                 Bucket: env.AwsS3,
                 Key: file.uploadpath,
                 Body: buffer,
-                ACL: 'private',
+                ACL: settings.fileACL ?? 'private',
                 ContentType: file.contentType,
               })
               .promise()
@@ -181,7 +181,7 @@ async function clearFiles(settings: DeployCloudFront.Setting, uploads: DeployClo
   const s3 = new AWS.S3(env.AwsConfiguration)
   const now = new Date().getTime()
   const prefixUploads = `${env.WebRoot}/.uploads`
-  const uploadRecord = `${prefixUploads}/v${env.Version}-${now}.json`.replaceAll('\\','/')
+  const uploadRecord = `${prefixUploads}/v${env.Version}-${now}.json`.replaceAll('\\', '/')
 
   // 載入所有更新記錄 (前 {reverses} 次記錄)
   const res = await s3
@@ -197,7 +197,7 @@ async function clearFiles(settings: DeployCloudFront.Setting, uploads: DeployClo
       Bucket: env.AwsS3,
       Key: uploadRecord,
       Body: JSON.stringify(uploads),
-      ACL: 'public-read',
+      ACL: settings.fileACL ?? 'private',
       ContentType: 'application/json',
     })
     .promise()

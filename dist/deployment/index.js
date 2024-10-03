@@ -476,7 +476,7 @@ const deployCloudFront = async function(settings) {
           Bucket: env2.AwsS3,
           Key: file.uploadpath,
           Body: buffer,
-          ACL: "private",
+          ACL: settings.fileACL ?? "private",
           ContentType: file.contentType
         }).promise().then(() => {
           uploads.push({
@@ -566,7 +566,7 @@ async function clearFiles(settings, uploads) {
     Bucket: env2.AwsS3,
     Key: uploadRecord,
     Body: JSON.stringify(uploads),
-    ACL: "public-read",
+    ACL: settings.fileACL ?? "private",
     ContentType: "application/json"
   }).promise();
   const files = /* @__PURE__ */ new Map();
