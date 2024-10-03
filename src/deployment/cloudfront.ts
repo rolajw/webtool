@@ -23,7 +23,7 @@ export const deployCloudFront = async function (settings: DeployCloudFront.Setti
   if (!env.WebRoot.startsWith('website')) {
     throw new Error(`WebRoot must start with website.  Found: ${env.WebRoot}`)
   }
-  
+
   const task = new Task()
   task.onComplete = (file: Tools.ScanFileItem) => {
     console.info(`uploaded ${file.filepath}`)
@@ -61,6 +61,7 @@ export const deployCloudFront = async function (settings: DeployCloudFront.Setti
   files
     .sort((a, b) => b.size - a.size)
     .forEach((file) => {
+      const fileUploadkey = file.uploadpath.replaceAll('\\','/')
       task.add(() =>
         fs.promises
           .readFile(file.filepath)
@@ -68,7 +69,7 @@ export const deployCloudFront = async function (settings: DeployCloudFront.Setti
             s3
               .upload({
                 Bucket: env.AwsS3,
-                Key: file.uploadpath,
+                Key: fileUploadkey,
                 Body: buffer,
                 ACL: 'private',
                 ContentType: file.contentType,
@@ -76,7 +77,7 @@ export const deployCloudFront = async function (settings: DeployCloudFront.Setti
               .promise()
               .then(() => {
                 uploads.push({
-                  key: file.uploadpath,
+                  key: fileUploadkey,
                   sha1: tools.sha1(buffer),
                 })
               })
@@ -181,7 +182,7 @@ async function clearFiles(settings: DeployCloudFront.Setting, uploads: DeployClo
   const s3 = new AWS.S3(env.AwsConfiguration)
   const now = new Date().getTime()
   const prefixUploads = `${env.WebRoot}/.uploads`
-  const uploadRecord = `${prefixUploads}/v${env.Version}-${now}.json`
+  const uploadRecord = `${prefixUploads}/v${env.Version}-${now}.json`.replaceAll('\\','/')
 
   // 載入所有更新記錄 (前 {reverses} 次記錄)
   const res = await s3

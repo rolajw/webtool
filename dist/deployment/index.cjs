@@ -468,17 +468,18 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     });
     const uploads = [];
     files.sort((a, b) => b.size - a.size).forEach((file) => {
+      const fileUploadkey = file.uploadpath.replaceAll("\\", "/");
       task.add(
         () => fs.promises.readFile(file.filepath).then(
           (buffer) => s3.upload({
             Bucket: env2.AwsS3,
-            Key: file.uploadpath,
+            Key: fileUploadkey,
             Body: buffer,
             ACL: "private",
             ContentType: file.contentType
           }).promise().then(() => {
             uploads.push({
-              key: file.uploadpath,
+              key: fileUploadkey,
               sha1: tools.sha1(buffer)
             });
           })
@@ -555,7 +556,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     const s3 = new AWS.S3(env2.AwsConfiguration);
     const now = (/* @__PURE__ */ new Date()).getTime();
     const prefixUploads = `${env2.WebRoot}/.uploads`;
-    const uploadRecord = `${prefixUploads}/v${env2.Version}-${now}.json`;
+    const uploadRecord = `${prefixUploads}/v${env2.Version}-${now}.json`.replaceAll("\\", "/");
     const res = await s3.listObjectsV2({
       Bucket: env2.AwsS3,
       Prefix: `${prefixUploads}/`
