@@ -50,7 +50,7 @@ export const deployCloudFront = async function (settings: DeployCloudFront.Setti
       }
 
       if (item.filepath === path.resolve(settings.dir, 'index.html')) {
-        item.uploadpath = `${webpath}/${indexFile}`
+        item.uploadpath = `${webpath}/${indexFile}`.replaceAll('\\','/')
       }
 
       return item
@@ -61,7 +61,6 @@ export const deployCloudFront = async function (settings: DeployCloudFront.Setti
   files
     .sort((a, b) => b.size - a.size)
     .forEach((file) => {
-      const fileUploadkey = file.uploadpath.replaceAll('\\','/')
       task.add(() =>
         fs.promises
           .readFile(file.filepath)
@@ -69,7 +68,7 @@ export const deployCloudFront = async function (settings: DeployCloudFront.Setti
             s3
               .upload({
                 Bucket: env.AwsS3,
-                Key: fileUploadkey,
+                Key: file.uploadpath,
                 Body: buffer,
                 ACL: 'private',
                 ContentType: file.contentType,
@@ -77,7 +76,7 @@ export const deployCloudFront = async function (settings: DeployCloudFront.Setti
               .promise()
               .then(() => {
                 uploads.push({
-                  key: fileUploadkey,
+                  key: file.uploadpath,
                   sha1: tools.sha1(buffer),
                 })
               })
