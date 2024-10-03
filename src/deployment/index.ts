@@ -35,6 +35,7 @@ export async function deployment(options: DeploymentOptions) {
     if (!options.cloudfront) {
       throw new Error(`cludfront settings is required`)
     }
+    
     await deployCloudFront(options.cloudfront)
   }
 

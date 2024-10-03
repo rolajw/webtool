@@ -231,9 +231,6 @@ const updateDeployEnv = (packageContent, data) => {
     env.AwsConfiguration.credentials = myconfig.credentials || void 0;
   }
 };
-if (!env.WebRoot.startsWith("website")) {
-  throw new Error(`WebRoot must start with website.  Found: ${env.WebRoot}`);
-}
 const deployenv = () => {
   if (!env.AwsRegion) {
     throw new Error(`REGION is required`);
@@ -443,6 +440,9 @@ const deployCloudFront = async function(settings) {
   const rewrites = settings.rewriters ? JSON.stringify(settings.rewriters) : "{}";
   const s3 = new AWS.S3(env2.AwsConfiguration);
   const cloudfront = new AWS.CloudFront(env2.AwsConfiguration);
+  if (!env2.WebRoot.startsWith("website")) {
+    throw new Error(`WebRoot must start with website.  Found: ${env2.WebRoot}`);
+  }
   const task = new Task();
   task.onComplete = (file) => {
     console.info(`uploaded ${file.filepath}`);

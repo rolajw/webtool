@@ -20,6 +20,10 @@ export const deployCloudFront = async function (settings: DeployCloudFront.Setti
   const s3 = new AWS.S3(env.AwsConfiguration)
   const cloudfront = new AWS.CloudFront(env.AwsConfiguration)
 
+  if (!env.WebRoot.startsWith('website')) {
+    throw new Error(`WebRoot must start with website.  Found: ${env.WebRoot}`)
+  }
+  
   const task = new Task()
   task.onComplete = (file: Tools.ScanFileItem) => {
     console.info(`uploaded ${file.filepath}`)
