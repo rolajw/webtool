@@ -26,8 +26,9 @@ export const deployCloudFront = async function (settings: DeployCloudFront.Setti
 
   const task = new Task()
   task.onComplete = (file: Tools.ScanFileItem) => {
+    const fileUploadKey = file.uploadpath.replaceAll('\\', '/')
     console.info(`uploaded ${file.filepath}`)
-    console.info(`  -> ${file.uploadpath}`)
+    console.info(`  -> ${fileUploadKey}`)
   }
 
   const ignoreStrings = settings.ignoreFiles
@@ -50,7 +51,7 @@ export const deployCloudFront = async function (settings: DeployCloudFront.Setti
       }
 
       if (item.filepath === path.resolve(settings.dir, 'index.html')) {
-        item.uploadpath = `${webpath}/${indexFile}`.replaceAll('\\', '/')
+        item.uploadpath = `${webpath}/${indexFile}`
       }
 
       return item
@@ -61,6 +62,7 @@ export const deployCloudFront = async function (settings: DeployCloudFront.Setti
   files
     .sort((a, b) => b.size - a.size)
     .forEach((file) => {
+      const fileUploadKey = file.uploadpath.replaceAll('\\', '/')
       task.add(() =>
         fs.promises
           .readFile(file.filepath)
@@ -68,7 +70,7 @@ export const deployCloudFront = async function (settings: DeployCloudFront.Setti
             s3
               .upload({
                 Bucket: env.AwsS3,
-                Key: file.uploadpath,
+                Key: fileUploadKey,
                 Body: buffer,
                 ACL: settings.fileACL ?? 'private',
                 ContentType: file.contentType,
@@ -76,7 +78,7 @@ export const deployCloudFront = async function (settings: DeployCloudFront.Setti
               .promise()
               .then(() => {
                 uploads.push({
-                  key: file.uploadpath,
+                  key: fileUploadKey,
                   sha1: tools.sha1(buffer),
                 })
               })

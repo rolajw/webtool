@@ -443,8 +443,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     const task = new Task();
     task.onComplete = (file) => {
+      const fileUploadKey = file.uploadpath.replaceAll("\\", "/");
       console.info(`uploaded ${file.filepath}`);
-      console.info(`  -> ${file.uploadpath}`);
+      console.info(`  -> ${fileUploadKey}`);
     };
     const ignoreStrings = (_a = settings.ignoreFiles) == null ? void 0 : _a.map((f) => typeof f === "string" ? f : void 0).filter(filterTruthy);
     const ignoreRegExps = (_b = settings.ignoreFiles) == null ? void 0 : _b.map((f) => f instanceof RegExp ? f : void 0).filter(filterTruthy);
@@ -461,24 +462,25 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           return null;
         }
         if (item.filepath === path.resolve(settings.dir, "index.html")) {
-          item.uploadpath = `${webpath}/${indexFile}`.replaceAll("\\", "/");
+          item.uploadpath = `${webpath}/${indexFile}`;
         }
         return item;
       }
     });
     const uploads = [];
     files.sort((a, b) => b.size - a.size).forEach((file) => {
+      const fileUploadKey = file.uploadpath.replaceAll("\\", "/");
       task.add(
         () => fs.promises.readFile(file.filepath).then(
           (buffer) => s3.upload({
             Bucket: env2.AwsS3,
-            Key: file.uploadpath,
+            Key: fileUploadKey,
             Body: buffer,
             ACL: settings.fileACL ?? "private",
             ContentType: file.contentType
           }).promise().then(() => {
             uploads.push({
-              key: file.uploadpath,
+              key: fileUploadKey,
               sha1: tools.sha1(buffer)
             });
           })
