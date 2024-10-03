@@ -230,7 +230,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
   };
   if (!env.WebRoot.startsWith("website")) {
-    throw new Error(`WebRoot must start with website`);
+    throw new Error(`WebRoot must start with website.  Found: ${env.WebRoot}`);
   }
   const deployenv = () => {
     if (!env.AwsRegion) {

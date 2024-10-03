@@ -232,7 +232,7 @@ const updateDeployEnv = (packageContent, data) => {
   }
 };
 if (!env.WebRoot.startsWith("website")) {
-  throw new Error(`WebRoot must start with website`);
+  throw new Error(`WebRoot must start with website.  Found: ${env.WebRoot}`);
 }
 const deployenv = () => {
   if (!env.AwsRegion) {

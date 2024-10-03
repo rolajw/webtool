@@ -51,7 +51,7 @@ export const updateDeployEnv = (packageContent: PackageContent, data?: UpdateDep
 }
 
 if (!env.WebRoot.startsWith('website')) {
-  throw new Error(`WebRoot must start with website`)
+  throw new Error(`WebRoot must start with website.  Found: ${env.WebRoot}`)
 }
 
 export const deployenv = () => {
