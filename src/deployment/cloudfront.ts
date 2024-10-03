@@ -5,6 +5,7 @@ import fs from 'fs'
 import path from 'path'
 import { Task } from './task'
 import cloudfrontFunction from './functions/cloudfront-function.js?raw'
+import { ObjectCannedACL } from 'aws-sdk/clients/s3'
 
 type Truthy<T> = T extends false | '' | 0 | null | undefined ? never : T
 const filterTruthy = <T>(value: T): value is Truthy<T> => !!value
@@ -65,7 +66,7 @@ export const deployCloudFront = async function (settings: DeployCloudFront.Setti
                 Bucket: env.AwsS3,
                 Key: file.uploadpath,
                 Body: buffer,
-                ACL: 'public-read',
+                ACL: 'private',
                 ContentType: file.contentType,
               })
               .promise()
@@ -314,6 +315,7 @@ async function clearFiles(settings: DeployCloudFront.Setting, uploads: DeployClo
 export namespace DeployCloudFront {
   export interface Setting {
     dir: string
+    fileACL?: ObjectCannedACL
     // 已佈署的版本保留數
     reverses?: number // default: 1
     rewriters?: { [path: string]: string }

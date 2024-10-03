@@ -46,8 +46,12 @@ export const updateDeployEnv = (packageContent: PackageContent, data?: UpdateDep
     const myconfig = new AWS.Config()
     myconfig.update({ region: env.AwsRegion })
     env.AwsConfiguration.region = env.AwsRegion
-    env.AwsConfiguration.credentials = myconfig.credentials
+    env.AwsConfiguration.credentials = myconfig.credentials || undefined
   }
+}
+
+if (!env.WebRoot.startsWith('website')) {
+  throw new Error(`WebRoot must start with website`)
 }
 
 export const deployenv = () => {
@@ -102,6 +106,9 @@ export interface DeployEnv {
   PackageContent: PackageContent
   AwsConfiguration: {
     region: string
-    credentials: any
+    credentials?: {
+      accessKeyId: string
+      secretAccessKey: string
+    }
   }
 }

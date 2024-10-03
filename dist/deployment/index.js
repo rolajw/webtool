@@ -228,9 +228,12 @@ const updateDeployEnv = (packageContent, data) => {
     const myconfig = new AWS.Config();
     myconfig.update({ region: env.AwsRegion });
     env.AwsConfiguration.region = env.AwsRegion;
-    env.AwsConfiguration.credentials = myconfig.credentials;
+    env.AwsConfiguration.credentials = myconfig.credentials || void 0;
   }
 };
+if (!env.WebRoot.startsWith("website")) {
+  throw new Error(`WebRoot must start with website`);
+}
 const deployenv = () => {
   if (!env.AwsRegion) {
     throw new Error(`REGION is required`);
@@ -429,7 +432,7 @@ class Task {
     }).then(() => Promise.all(promises));
   }
 }
-const cloudfrontFunction = "function handler(event) {\n  // replace stage variables\n  var webpath = 'REPLACE_PATH_VALUE'\n\n  // replace index file\n  var indexFile = 'REPLACE_INDEX_FILE'\n\n  /** @type {{[path: string]: string}} */\n  var rewriters = 'REPLACE_REWRITERS'\n\n  var request = event.request\n\n  var headers = request.headers\n\n  var encoding = headers['accept-encoding'] ? headers['accept-encoding'].value + ',' : ''\n  headers['accept-encoding'] = {\n    value: encoding + 'br,gzip',\n  }\n\n  /** @type {string} */\n  var uri = request.uri\n  if (rewriters && rewriters[uri]) {\n    uri = rewriters[uri]\n  } else if (uri.endsWith('/') || uri.endsWith('index.html') || !uri.includes('.')) {\n    uri = '/' + indexFile\n  }\n\n  if (!uri.startsWith('/')) {\n    uri = '/' + uri\n  }\n\n  request.uri = '/' + webpath + uri\n\n  return request\n}\n";
+const cloudfrontFunction = "function handler(event) {\r\n  // replace stage variables\r\n  var webpath = 'REPLACE_PATH_VALUE'\r\n\r\n  // replace index file\r\n  var indexFile = 'REPLACE_INDEX_FILE'\r\n\r\n  /** @type {{[path: string]: string}} */\r\n  var rewriters = 'REPLACE_REWRITERS'\r\n\r\n  var request = event.request\r\n\r\n  var headers = request.headers\r\n\r\n  var encoding = headers['accept-encoding'] ? headers['accept-encoding'].value + ',' : ''\r\n  headers['accept-encoding'] = {\r\n    value: encoding + 'br,gzip',\r\n  }\r\n\r\n  /** @type {string} */\r\n  var uri = request.uri\r\n  if (rewriters && rewriters[uri]) {\r\n    uri = rewriters[uri]\r\n  } else if (uri.endsWith('/') || uri.endsWith('index.html') || !uri.includes('.')) {\r\n    uri = '/' + indexFile\r\n  }\r\n\r\n  if (!uri.startsWith('/')) {\r\n    uri = '/' + uri\r\n  }\r\n\r\n  request.uri = '/' + webpath + uri\r\n\r\n  return request\r\n}\r\n";
 const filterTruthy = (value) => !!value;
 const deployCloudFront = async function(settings) {
   var _a, _b;
@@ -473,7 +476,7 @@ const deployCloudFront = async function(settings) {
           Bucket: env2.AwsS3,
           Key: file.uploadpath,
           Body: buffer,
-          ACL: "public-read",
+          ACL: "private",
           ContentType: file.contentType
         }).promise().then(() => {
           uploads.push({
