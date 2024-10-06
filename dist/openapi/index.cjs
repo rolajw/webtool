@@ -190,28 +190,48 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     genEnums(model, name) {
       const { description } = model;
       let data = {};
-      if (!description) {
-        console.error("Enum.description is empty : ", model);
-        throw new Error("Enum.description is required");
-      }
-      try {
-        data = JSON.parse(description);
-      } catch (err) {
-        console.error("parse json error: ", model);
-        throw err;
-      }
       if (!name) {
         console.error("errer enum: ", model);
         throw new Error(`Enum.title is required`);
       }
-      const out = this.outEnums;
-      this.enums.add(name);
-      out.push(`export enum ${name} {`).pushIndentCodes(() => {
-        Object.entries(data).forEach(([key, value]) => {
-          const dtype = typeof value === "number" ? value : `'${value}'`;
-          out.push(`${key} = ${dtype},`);
-        });
-      }).push("}");
+      if (description) {
+        try {
+          data = JSON.parse(description);
+        } catch (err) {
+          console.error("parse json error: ", model);
+          throw err;
+        }
+        const out = this.outEnums;
+        this.enums.add(name);
+        out.push(`export enum ${name} {`).pushIndentCodes(() => {
+          Object.entries(data).forEach(([key, value]) => {
+            const dtype = typeof value === "number" ? value : `'${value}'`;
+            out.push(`${key} = ${dtype},`);
+          });
+        }).push("}");
+      } else if (model.enum) {
+        this.enums.add(name);
+        const out = this.outEnums;
+        const values = model.enum.map((v) => {
+          if (typeof v === "number") {
+            return v;
+          }
+          const vstr = v.toString();
+          if (!vstr.includes("'")) {
+            return `'${v}'`;
+          } else if (!vstr.includes('"')) {
+            return `"${v}"`;
+          } else if (!vstr.includes("`")) {
+            return `\`${v}\``;
+          } else {
+            throw new Error(`Enum(${name}) value(${v}) is invalid`);
+          }
+        }).join(" | ");
+        out.push(`export type ${name} = ${values}`);
+      } else {
+        console.error(`Enum(${name}) is empty: `, model);
+        throw new Error(`Enum(${name}).enum or description is required`);
+      }
       return name;
     }
   }
