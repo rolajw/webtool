@@ -2,12 +2,10 @@ export class OutputFormatter {
   public dent = 0
   public content: string[] = []
 
-  public indent(value = 1) {
-    this.dent += value
-    return this
-  }
-  public outdent(value = -1) {
-    this.dent = Math.max(0, this.dent + value)
+  public indent(callback: () => void) {
+    this.dent += 1
+    callback()
+    this.dent -= 1
     return this
   }
 
@@ -21,13 +19,6 @@ export class OutputFormatter {
     values.forEach((line) => {
       this.content.push(tabs + line)
     })
-    return this
-  }
-
-  public pushIndentCodes(fn: () => void) {
-    this.indent()
-    fn()
-    this.outdent()
     return this
   }
 

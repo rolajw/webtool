@@ -1,4 +1,5 @@
-import { OpenAPI } from './open-api'
+import { OpenAPITypes } from './openapi-types'
+import { OpenAPI } from './openapi'
 import fs from 'fs'
 import axios from 'axios'
 
@@ -16,7 +17,7 @@ if (url) {
 }
 
 promise.then((data) => {
-  const code = new OpenAPI(data).genCode()
+  const code = new OpenAPI(data).genSchema()
   fs.writeFileSync(outpath, code)
 })
 

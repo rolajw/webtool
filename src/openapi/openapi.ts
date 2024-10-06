@@ -16,10 +16,10 @@ export class OpenAPI {
     return data ? data['application/json']?.schema : undefined
   }
 
-  public genCode() {
+  public genSchema() {
     this.outModels
       .push('export declare namespace SchemaComponents {')
-      .pushIndentCodes(() => {
+      .indent(() => {
         Object.entries(this.data.components.schemas)
           .map(([name, model]) => {
             return { name, model, enum: model.enum ? 1 : 0 }
@@ -31,15 +31,15 @@ export class OpenAPI {
 
     this.outPaths
       .push('export interface SchemaPaths {')
-      .pushIndentCodes(() => {
+      .indent(() => {
         Object.entries(this.data.paths).forEach(([path, methods]) => {
           this.outPaths
             .push(`'${path}': {`)
-            .pushIndentCodes(() => {
+            .indent(() => {
               Object.entries(methods).forEach(([method, mcontent]) => {
                 this.outPaths
                   .push(`${method}: {`)
-                  .pushIndentCodes(() => this.genPathMethod(mcontent))
+                  .indent(() => this.genPathMethod(method, mcontent))
                   .push('}')
               })
             })
@@ -50,15 +50,16 @@ export class OpenAPI {
     return [this.outPaths.toString(), this.outModels.toString(), this.outEnums.toString()].join('\n')
   }
 
-  public genPathMethod(method: OpenAPITypes.MethodContent) {
+  public genPathMethod(method: string, content: OpenAPITypes.MethodContent) {
     const out = this.outPaths
 
     const query: Record<string, string> = {}
     const path: Record<string, string> = {}
-    if (method.parameters) {
-      method.parameters.forEach((param) => {
+    const header: Record<string, string> = {}
+    if (content.parameters) {
+      content.parameters.forEach((param) => {
         if (!param.name) {
-          console.info(method)
+          console.info(content)
           throw new Error(`Error param.name is empty`)
         }
 
@@ -69,6 +70,8 @@ export class OpenAPI {
           path[param.name] = dataType === 'string' ? 'string | number' : dataType
         } else if (param.in === 'query') {
           query[param.name] = dataType
+        } else if (param.in === 'header') {
+          header[param.name] = dataType
         } else {
           console.error('Error : ', param)
           throw new Error('unknown param.in = ', param.in)
@@ -76,42 +79,43 @@ export class OpenAPI {
       })
     }
 
-    out
-      .push('parameters: {')
-      .pushIndentCodes(() => {
-        if (Object.keys(query).length) {
-          out
-            .push('query: {')
-            .pushIndentCodes(() => {
-              Object.entries(query).forEach(([k, v]) => out.push(`${k}: ${v}`))
-            })
-            .push('}')
-        } else {
-          out.push('query: undefined')
-        }
-
-        if (Object.keys(path).length) {
-          out
-            .push('path: {')
-            .pushIndentCodes(() => {
-              Object.entries(path).forEach(([k, v]) => out.push(`${k}: ${v}`))
-            })
-            .push('}')
-        } else {
-          out.push('path: undefined')
-        }
-      })
-      .push('}')
-
-    const reqData = this.getContent(method.requestBody?.content)
-    if (reqData) {
-      const dataTypes = this.genModel(reqData)
-      out.push(`body: ${dataTypes}`)
+    if (Object.keys(path).length) {
+      out
+        .push('path: {')
+        .indent(() => Object.entries(path).forEach(([k, v]) => out.push(`${k}: ${v}`)))
+        .push('}')
     } else {
-      out.push(`body: undefined`)
+      out.push('path: undefined')
     }
 
-    const response = method.responses ?? { 200: {} }
+    if (Object.keys(header).length) {
+      out
+        .push('headers: {')
+        .indent(() => {
+          Object.entries(header).forEach(([k, v]) => out.push(`${k}: ${v}`))
+        })
+        .push('}')
+    }
+
+    if (method.toUpperCase() === 'GET') {
+      const queryBody = query?.body
+      if (Object.keys(query).length) {
+        out.push(`body: ${queryBody}`)
+      } else {
+        out.push('body: undefined')
+      }
+    } else {
+      const reqData = this.getContent(content.requestBody?.content)
+      console.info(' >> ', content, reqData)
+      if (reqData) {
+        const dataTypes = this.genModel(reqData)
+        out.push(`body: ${dataTypes}`)
+      } else {
+        out.push(`body: undefined`)
+      }
+    }
+
+    const response = content.responses ?? { 200: {} }
     const resData = this.getContent(response[200]?.content)
     if (resData) {
       const dataTypes = this.genModel(resData)
@@ -121,11 +125,13 @@ export class OpenAPI {
     }
   }
 
-  genModel(model: OpenAPITypes.SchemaModel, name?: string) {
-    const { properties = undefined, required = undefined } = model
-
+  genModel(model: OpenAPITypes.SchemaModel, name?: string): string {
     if (model.enum) {
       return this.genEnums(model, name)
+    }
+
+    if (model.anyOf) {
+      return model.anyOf.map((item) => this.genModel(item)).join(' | ')
     }
 
     if (model.$ref) {
@@ -152,6 +158,8 @@ export class OpenAPI {
         return 'string'
       case 'boolean':
         return 'boolean'
+      case 'null':
+        return 'null'
       default:
         return 'unknown'
     }
@@ -165,8 +173,8 @@ export class OpenAPI {
     if (properties) {
       objectTypes = Object.entries(properties).map(([key, value]) => {
         const dtype = this.genModel(value)
-        const hasDefault = value.default !== null && value.default !== undefined
-        return required.includes(key) || hasDefault ? `${key}: ${dtype}` : `${key}?: ${dtype} | null`
+        // const hasDefault = value.default !== null && value.default !== undefined
+        return required.includes(key) ? `${key}: ${dtype}` : `${key}?: ${dtype}`
       })
     }
 
@@ -179,7 +187,7 @@ export class OpenAPI {
     } else {
       out
         .push(`interface ${name} {`)
-        .pushIndentCodes(() => objectTypes.forEach((line) => out.push(line)))
+        .indent(() => objectTypes.forEach((line) => out.push(line)))
         .push('}')
     }
     return `SchemaComponents.${name}`
@@ -204,57 +212,59 @@ export class OpenAPI {
 
   public genEnums(model: OpenAPITypes.SchemaModel, name?: string) {
     const { description } = model
-    let data: Record<string, any> = {}
 
-    const enumName = name || model.title
+    let enumName = name || model.title
+
     if (!enumName) {
       console.error('errer enum: ', model)
       throw new Error(`Enum.title is required`)
     }
 
+    let enumData: Record<string, any> | null = null
     if (description) {
       try {
-        data = JSON.parse(description)
+        enumData = JSON.parse(description)
       } catch (err) {
         console.error('parse json error: ', model)
-        throw err
       }
+    }
+
+    if (enumData) {
       const out = this.outEnums
-      this.enums.add(enumName)
       out
-        .push(`export enum ${enumName} {`)
-        .pushIndentCodes(() => {
-          Object.entries(data).forEach(([key, value]) => {
+        .push(`export enum ${name} {`)
+        .indent(() => {
+          Object.entries(enumData).forEach(([key, value]) => {
             const dtype = typeof value === 'number' ? value : `'${value}'`
             out.push(`${key} = ${dtype},`)
           })
         })
         .push('}')
     } else if (model.enum) {
-      this.enums.add(enumName)
       const out = this.outEnums
-      const values = model.enum
-        .map((v) => {
-          if (typeof v === 'number') {
-            return v
+      const enumValues = model.enum
+        .map((value) => {
+          if (typeof value === 'number') {
+            return `${value}`
           }
-          const vstr = v.toString()
+          const vstr = value.toString()
           if (!vstr.includes("'")) {
-            return `'${v}'`
+            return `'${vstr}'`
           } else if (!vstr.includes('"')) {
-            return `"${v}"`
+            return `"${vstr}"`
           } else if (!vstr.includes('`')) {
-            return `\`${v}\``
+            return `\`${vstr}\``
           } else {
-            throw new Error(`Enum(${enumName}) value(${v}) is invalid`)
+            throw new Error(`Invalid enum value: ${value}`)
           }
         })
         .join(' | ')
-      out.push(`export type ${enumName} = ${values}`)
+      out.push(`export type ${enumName} = ${enumValues}`)
     } else {
-      console.error(`Enum(${enumName}) is empty: `, model)
-      throw new Error(`Enum(${enumName}).enum or description is required`)
+      throw new Error(`Enum(${enumName}) value is invalid`)
     }
+
+    this.enums.add(enumName)
     return enumName
   }
 }

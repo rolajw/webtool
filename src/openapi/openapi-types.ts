@@ -1,5 +1,5 @@
 export declare namespace OpenAPITypes {
-  type DataType = 'object' | 'array' | 'string' | 'integer' | 'number' | 'boolean'
+  type DataType = 'object' | 'array' | 'string' | 'integer' | 'number' | 'boolean' | 'null'
 
   type SchemaModel = {
     properties?: Record<string, SchemaModel>
@@ -8,6 +8,7 @@ export declare namespace OpenAPITypes {
     description?: string
     type?: DataType
     enum?: string[] | number[]
+    anyOf: SchemaModel[]
     required?: string[]
     title?: string
     oneOf?: SchemaModel[]

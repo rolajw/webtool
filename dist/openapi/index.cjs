@@ -10,12 +10,10 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       __publicField(this, "dent", 0);
       __publicField(this, "content", []);
     }
-    indent(value = 1) {
-      this.dent += value;
-      return this;
-    }
-    outdent(value = -1) {
-      this.dent = Math.max(0, this.dent + value);
+    indent(callback) {
+      this.dent += 1;
+      callback();
+      this.dent -= 1;
       return this;
     }
     tabs() {
@@ -27,12 +25,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       values.forEach((line) => {
         this.content.push(tabs + line);
       });
-      return this;
-    }
-    pushIndentCodes(fn) {
-      this.indent();
-      fn();
-      this.outdent();
       return this;
     }
     toString() {
@@ -52,32 +44,33 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       var _a;
       return data ? (_a = data["application/json"]) == null ? void 0 : _a.schema : void 0;
     }
-    genCode() {
-      this.outModels.push("export declare namespace SchemaComponents {").pushIndentCodes(() => {
+    genSchema() {
+      this.outModels.push("export declare namespace SchemaComponents {").indent(() => {
         Object.entries(this.data.components.schemas).map(([name, model]) => {
           return { name, model, enum: model.enum ? 1 : 0 };
         }).sort((a, b) => b.enum - a.enum).forEach((o) => this.genModel(o.model, o.name));
       }).push("}");
-      this.outPaths.push("export interface SchemaPaths {").pushIndentCodes(() => {
+      this.outPaths.push("export interface SchemaPaths {").indent(() => {
         Object.entries(this.data.paths).forEach(([path, methods]) => {
-          this.outPaths.push(`'${path}': {`).pushIndentCodes(() => {
+          this.outPaths.push(`'${path}': {`).indent(() => {
             Object.entries(methods).forEach(([method, mcontent]) => {
-              this.outPaths.push(`${method}: {`).pushIndentCodes(() => this.genPathMethod(mcontent)).push("}");
+              this.outPaths.push(`${method}: {`).indent(() => this.genPathMethod(method, mcontent)).push("}");
             });
           }).push("}");
         });
       }).push("}");
       return [this.outPaths.toString(), this.outModels.toString(), this.outEnums.toString()].join("\n");
     }
-    genPathMethod(method) {
+    genPathMethod(method, content) {
       var _a, _b;
       const out = this.outPaths;
       const query = {};
       const path = {};
-      if (method.parameters) {
-        method.parameters.forEach((param) => {
+      const header = {};
+      if (content.parameters) {
+        content.parameters.forEach((param) => {
           if (!param.name) {
-            console.info(method);
+            console.info(content);
             throw new Error(`Error param.name is empty`);
           }
           const pdata = param.schema ?? this.getContent(param.content);
@@ -86,36 +79,42 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
             path[param.name] = dataType === "string" ? "string | number" : dataType;
           } else if (param.in === "query") {
             query[param.name] = dataType;
+          } else if (param.in === "header") {
+            header[param.name] = dataType;
           } else {
             console.error("Error : ", param);
             throw new Error("unknown param.in = ", param.in);
           }
         });
       }
-      out.push("parameters: {").pushIndentCodes(() => {
-        if (Object.keys(query).length) {
-          out.push("query: {").pushIndentCodes(() => {
-            Object.entries(query).forEach(([k, v]) => out.push(`${k}: ${v}`));
-          }).push("}");
-        } else {
-          out.push("query: undefined");
-        }
-        if (Object.keys(path).length) {
-          out.push("path: {").pushIndentCodes(() => {
-            Object.entries(path).forEach(([k, v]) => out.push(`${k}: ${v}`));
-          }).push("}");
-        } else {
-          out.push("path: undefined");
-        }
-      }).push("}");
-      const reqData = this.getContent((_a = method.requestBody) == null ? void 0 : _a.content);
-      if (reqData) {
-        const dataTypes = this.genModel(reqData);
-        out.push(`body: ${dataTypes}`);
+      if (Object.keys(path).length) {
+        out.push("path: {").indent(() => Object.entries(path).forEach(([k, v]) => out.push(`${k}: ${v}`))).push("}");
       } else {
-        out.push(`body: undefined`);
+        out.push("path: undefined");
       }
-      const response = method.responses ?? { 200: {} };
+      if (Object.keys(header).length) {
+        out.push("headers: {").indent(() => {
+          Object.entries(header).forEach(([k, v]) => out.push(`${k}: ${v}`));
+        }).push("}");
+      }
+      if (method.toUpperCase() === "GET") {
+        const queryBody = query == null ? void 0 : query.body;
+        if (Object.keys(query).length) {
+          out.push(`body: ${queryBody}`);
+        } else {
+          out.push("body: undefined");
+        }
+      } else {
+        const reqData = this.getContent((_a = content.requestBody) == null ? void 0 : _a.content);
+        console.info(" >> ", content, reqData);
+        if (reqData) {
+          const dataTypes = this.genModel(reqData);
+          out.push(`body: ${dataTypes}`);
+        } else {
+          out.push(`body: undefined`);
+        }
+      }
+      const response = content.responses ?? { 200: {} };
       const resData = this.getContent((_b = response[200]) == null ? void 0 : _b.content);
       if (resData) {
         const dataTypes = this.genModel(resData);
@@ -127,6 +126,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     genModel(model, name) {
       if (model.enum) {
         return this.genEnums(model, name);
+      }
+      if (model.anyOf) {
+        return model.anyOf.map((item) => this.genModel(item)).join(" | ");
       }
       if (model.$ref) {
         const mname = model.$ref.replace("#/components/schemas/", "");
@@ -149,6 +151,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           return "string";
         case "boolean":
           return "boolean";
+        case "null":
+          return "null";
         default:
           return "unknown";
       }
@@ -160,8 +164,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       if (properties) {
         objectTypes = Object.entries(properties).map(([key, value]) => {
           const dtype = this.genModel(value);
-          const hasDefault = value.default !== null && value.default !== void 0;
-          return required.includes(key) || hasDefault ? `${key}: ${dtype}` : `${key}?: ${dtype} | null`;
+          return required.includes(key) ? `${key}: ${dtype}` : `${key}?: ${dtype}`;
         });
       }
       if (!name) {
@@ -170,7 +173,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       if (!properties) {
         out.push(`type ${name} = Record<string, any>`);
       } else {
-        out.push(`interface ${name} {`).pushIndentCodes(() => objectTypes.forEach((line) => out.push(line))).push("}");
+        out.push(`interface ${name} {`).indent(() => objectTypes.forEach((line) => out.push(line))).push("}");
       }
       return `SchemaComponents.${name}`;
     }
@@ -189,50 +192,49 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     }
     genEnums(model, name) {
       const { description } = model;
-      let data = {};
-      const enumName = name || model.title;
+      let enumName = name || model.title;
       if (!enumName) {
         console.error("errer enum: ", model);
         throw new Error(`Enum.title is required`);
       }
+      let enumData = null;
       if (description) {
         try {
-          data = JSON.parse(description);
+          enumData = JSON.parse(description);
         } catch (err) {
           console.error("parse json error: ", model);
-          throw err;
         }
+      }
+      if (enumData) {
         const out = this.outEnums;
-        this.enums.add(enumName);
-        out.push(`export enum ${enumName} {`).pushIndentCodes(() => {
-          Object.entries(data).forEach(([key, value]) => {
+        out.push(`export enum ${name} {`).indent(() => {
+          Object.entries(enumData).forEach(([key, value]) => {
             const dtype = typeof value === "number" ? value : `'${value}'`;
             out.push(`${key} = ${dtype},`);
           });
         }).push("}");
       } else if (model.enum) {
-        this.enums.add(enumName);
         const out = this.outEnums;
-        const values = model.enum.map((v) => {
-          if (typeof v === "number") {
-            return v;
+        const enumValues = model.enum.map((value) => {
+          if (typeof value === "number") {
+            return `${value}`;
           }
-          const vstr = v.toString();
+          const vstr = value.toString();
           if (!vstr.includes("'")) {
-            return `'${v}'`;
+            return `'${vstr}'`;
           } else if (!vstr.includes('"')) {
-            return `"${v}"`;
+            return `"${vstr}"`;
           } else if (!vstr.includes("`")) {
-            return `\`${v}\``;
+            return `\`${vstr}\``;
           } else {
-            throw new Error(`Enum(${enumName}) value(${v}) is invalid`);
+            throw new Error(`Invalid enum value: ${value}`);
           }
         }).join(" | ");
-        out.push(`export type ${enumName} = ${values}`);
+        out.push(`export type ${enumName} = ${enumValues}`);
       } else {
-        console.error(`Enum(${enumName}) is empty: `, model);
-        throw new Error(`Enum(${enumName}).enum or description is required`);
+        throw new Error(`Enum(${enumName}) value is invalid`);
       }
+      this.enums.add(enumName);
       return enumName;
     }
   }
@@ -247,7 +249,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     promise = axios.get(url).then((r) => r.data);
   }
   promise.then((data) => {
-    const code = new OpenAPI(data).genCode();
+    const code = new OpenAPI(data).genSchema();
     fs.writeFileSync(outpath, code);
   });
   function getArgument(key) {
