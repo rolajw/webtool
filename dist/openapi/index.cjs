@@ -233,7 +233,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         console.error(`Enum(${enumName}) is empty: `, model);
         throw new Error(`Enum(${enumName}).enum or description is required`);
       }
-      return name;
+      return enumName;
     }
   }
   const url = getArgument("-u") ?? getArgument("--url");
