@@ -46,7 +46,7 @@ function app() {
   }
 
   if (buildSchema) {
-    runBuildCommand(`build/vite.config.schema.ts`, options)
+    runBuildCommand(`build/vite.config.openapi.ts`, options)
   }
 
   if (buildVitePlugin) {

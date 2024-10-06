@@ -8,13 +8,13 @@ function resolve(p: string) {
 export default defineConfig({
   build: {
     ssr: true,
-    outDir: resolve('dist/schema'),
+    outDir: resolve('dist/openapi'),
     sourcemap: false,
     minify: false,
     lib: {
-      entry: resolve('src/schema/index.ts'),
-      name: 'Schema',
-      fileName: 'schema',
+      entry: resolve('src/openapi/index.ts'),
+      name: 'OpenAPI',
+      fileName: 'openapi',
     },
   },
 })
