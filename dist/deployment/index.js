@@ -656,23 +656,28 @@ const deployLambda = async function(settings) {
   const pathBundleFile = path.resolve(pathCache, "bundle.zip");
   const pathENV = path.resolve(pathCache, ".env");
   const lambda = new AWS.Lambda(env2.AwsConfiguration);
+  const isWindows = process.platform === "win32";
   tools.remove(pathBundleFile);
   tools.remove(pathENV);
   await fs.promises.readFile(`.env.${env2.Stage}`).then((buffer) => fs.promises.writeFile(pathENV, buffer));
-  const files = settings.files.map((fpath) => {
-    return tools.isDir(fpath) ? `-r9 ${fpath}` : fpath;
-  }).join(" ");
+  const files = settings.files.map((fpath) => `"${fpath}"`).join(" ");
   const ignores = (settings.ignoreFiles || []).map((s) => `"${s}"`);
-  const ignoreOption = ignores.length > 0 ? "-x " + ignores.join(" ") : "";
-  await tools.spawn([`cd ${ROOT}`, `zip ${pathBundleFile} ${files} ${ignoreOption}`].join(" && "));
-  await tools.spawn([`cd ${pathCache}`, `zip -gr9 ${pathBundleFile} .env`].join(" && "));
-  await tools.spawn(
-    [
-      `cd ${pathCache}`,
-      "ln -s /opt/nodejs/node_modules node_modules",
-      `zip --symlinks ${pathBundleFile} node_modules`
-    ].join(" && ")
-  );
+  let ignoreOption = "";
+  if (isWindows && ignores.length > 0) {
+    ignoreOption = ignores.map((s) => `-xr!${s}`).join(" ");
+  } else if (!isWindows && ignores.length > 0) {
+    ignoreOption = ignores.map((s) => `-x ${s}`).join(" ");
+  }
+  if (isWindows) {
+    await tools.spawn([`cd ${ROOT}`, `7z a -tzip ${pathBundleFile} ${files} ${ignoreOption}`].join(" && "));
+  } else {
+    await tools.spawn([`cd ${ROOT}`, `zip ${pathBundleFile} ${files} ${ignoreOption}`].join(" && "));
+  }
+  if (isWindows) {
+    await tools.spawn([`cd ${pathCache}`, `7z a -tzip -mx=9 ${pathBundleFile} .env`].join(" && "));
+  } else {
+    await tools.spawn([`cd ${pathCache}`, `zip -gr9 ${pathBundleFile} .env`].join(" && "));
+  }
   const func = await lambda.getFunction({ FunctionName: env2.LambdaFunction }).promise().catch((err) => err.name === "ResourceNotFoundException" ? null : Promise.reject(err));
   if (!func) {
     await lambda.createFunction({
