@@ -787,10 +787,10 @@ async function runBundle(setting) {
   }
   const results = await patchPackages(setting == null ? void 0 : setting.patchs);
   for (const pkg of results) {
-    const pathPatchFolder = tools.root(`cache/${pkg.name}`);
-    const pathPatchNodeJS = tools.root(`cache/${pkg.name}/nodejs`);
-    const pathPatchPackage = tools.root(`cache/${pkg.name}/nodejs/package.json`);
-    const pathBundle = tools.root(`cache/${pkg.name}/nodejs.zip`);
+    const pathPatchFolder = tools.root(`.cache/${pkg.name}`);
+    const pathPatchNodeJS = tools.root(`.cache/${pkg.name}/nodejs`);
+    const pathPatchPackage = tools.root(`.cache/${pkg.name}/nodejs/package.json`);
+    const pathBundle = tools.root(`.cache/${pkg.name}/nodejs.zip`);
     tools.remove(pathPatchNodeJS);
     tools.remove(pathBundle);
     if (!tools.stat(pathPatchFolder)) {

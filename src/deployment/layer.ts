@@ -102,10 +102,10 @@ async function runBundle(setting: DeployLayer.Setting): Promise<DeployLayer.Laye
   const results = await patchPackages(setting?.patchs)
 
   for (const pkg of results) {
-    const pathPatchFolder = tools.root(`cache/${pkg.name}`)
-    const pathPatchNodeJS = tools.root(`cache/${pkg.name}/nodejs`)
-    const pathPatchPackage = tools.root(`cache/${pkg.name}/nodejs/package.json`)
-    const pathBundle = tools.root(`cache/${pkg.name}/nodejs.zip`)
+    const pathPatchFolder = tools.root(`.cache/${pkg.name}`)
+    const pathPatchNodeJS = tools.root(`.cache/${pkg.name}/nodejs`)
+    const pathPatchPackage = tools.root(`.cache/${pkg.name}/nodejs/package.json`)
+    const pathBundle = tools.root(`.cache/${pkg.name}/nodejs.zip`)
 
     tools.remove(pathPatchNodeJS)
     tools.remove(pathBundle)
