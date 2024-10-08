@@ -3,7 +3,6 @@ import { deployenv } from './deploy-env'
 import { tools } from './tools'
 import path from 'path'
 import fs from 'fs'
-const exe7z = '"C:\\Program Files\\7-Zip\\7z.exe"'
 
 export const deployLambda = async function (settings: DeploymentLambda.Setting) {
   const env = deployenv()
@@ -34,7 +33,7 @@ export const deployLambda = async function (settings: DeploymentLambda.Setting) 
   /** zip files */
   // windows command, use 7z replace zip
   if (isWindows) {
-    await tools.spawn([`cd ${ROOT}`, `${exe7z} a -tzip ${pathBundleFile} ${files} ${ignoreOption}`].join(' && '))
+    await tools.spawn([`cd ${ROOT}`, `${tools.exe7z} a -tzip ${pathBundleFile} ${files} ${ignoreOption}`].join(' && '))
   } else {
     await tools.spawn([`cd ${ROOT}`, `zip ${pathBundleFile} ${files} ${ignoreOption}`].join(' && '))
   }
@@ -42,7 +41,7 @@ export const deployLambda = async function (settings: DeploymentLambda.Setting) 
 
   /** zip add .env */
   if (isWindows) {
-    await tools.spawn([`cd ${pathCache}`, `${exe7z} a -tzip -mx=9 ${pathBundleFile} .env`].join(' && '))
+    await tools.spawn([`cd ${pathCache}`, `${tools.exe7z} a -tzip -mx=9 ${pathBundleFile} .env`].join(' && '))
   } else {
     await tools.spawn([`cd ${pathCache}`, `zip -gr9 ${pathBundleFile} .env`].join(' && '))
   }

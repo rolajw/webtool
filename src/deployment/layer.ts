@@ -4,6 +4,8 @@ import { tools } from './tools'
 import AWS from 'aws-sdk'
 import { Task } from './task'
 
+const isWindows = process.platform === 'win32'
+
 export const deployLayer = async function (setting: DeployLayer.Setting) {
   const env = deployenv()
   const lambda = new AWS.Lambda(env.AwsConfiguration)
@@ -116,7 +118,12 @@ async function runBundle(setting: DeployLayer.Setting): Promise<DeployLayer.Laye
     }
     fs.promises.writeFile(pathPatchPackage, JSON.stringify(pkg, null, 4))
     await tools.spawn(`cd ${pathPatchNodeJS} && npm i --only=prod`)
-    await tools.spawn(`cd ${pathPatchFolder} && zip ${pathBundle} -r9 nodejs`)
+
+    if (isWindows) {
+      await tools.spawn(`cd ${pathPatchFolder} && ${tools.exe7z} a -tzip ${pathBundle} nodejs`)
+    } else {
+      await tools.spawn(`cd ${pathPatchFolder} && zip ${pathBundle} -r9 nodejs`)
+    }
 
     pkg.bundlePath = pathBundle
   }
@@ -133,7 +140,7 @@ async function runDeploy(setting: DeployLayer.Setting, pitem: DeployLayer.LayerP
   const res = await lambda
     .publishLayerVersion({
       LayerName: pitem.name,
-      CompatibleRuntimes: setting.runtimes ?? ['nodejs16.x'],
+      CompatibleRuntimes: setting.runtimes ?? ['nodejs20.x'],
       Content: {
         ZipFile: fs.readFileSync(pitem.bundlePath),
       },

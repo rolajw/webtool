@@ -5,6 +5,7 @@ import crypto from 'crypto'
 const cwd = process.cwd()
 
 export const tools = {
+  exe7z: '"C:\\Program Files\\7-Zip\\7z.exe"',
   root(...p: string[]): string {
     return path.resolve(cwd, ...p)
   },

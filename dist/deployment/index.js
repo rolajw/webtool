@@ -248,6 +248,7 @@ const deployenv = () => {
 };
 const cwd = process.cwd();
 const tools = {
+  exe7z: '"C:\\Program Files\\7-Zip\\7z.exe"',
   root(...p) {
     return path.resolve(cwd, ...p);
   },
@@ -274,8 +275,8 @@ const tools = {
     return sha1Hash.digest("hex");
   },
   async spawn(cmd) {
-    const isWindows = process.platform === "win32";
-    if (isWindows) {
+    const isWindows2 = process.platform === "win32";
+    if (isWindows2) {
       const cmds = cmd.split("&&").map((c) => c.trim());
       cmds.forEach((c) => {
         console.info(`exec: ${c}`);
@@ -658,7 +659,6 @@ async function clearFiles(settings, uploads) {
     await createCloudfrontInvalidations(needUpdateds, settings.waitForInvalidations);
   }
 }
-const exe7z = '"C:\\Program Files\\7-Zip\\7z.exe"';
 const deployLambda = async function(settings) {
   const env2 = deployenv();
   const pathCache = tools.root(settings.cachePath);
@@ -666,25 +666,25 @@ const deployLambda = async function(settings) {
   const pathBundleFile = path.resolve(pathCache, "bundle.zip");
   const pathENV = path.resolve(pathCache, ".env");
   const lambda = new AWS.Lambda(env2.AwsConfiguration);
-  const isWindows = process.platform === "win32";
+  const isWindows2 = process.platform === "win32";
   tools.remove(pathBundleFile);
   tools.remove(pathENV);
   await fs.promises.readFile(`.env.${env2.Stage}`).then((buffer) => fs.promises.writeFile(pathENV, buffer));
   const files = settings.files.map((fpath) => `"${fpath}"`).join(" ");
   const ignores = (settings.ignoreFiles || []).map((s) => `"${s}"`);
   let ignoreOption = "";
-  if (isWindows && ignores.length > 0) {
+  if (isWindows2 && ignores.length > 0) {
     ignoreOption = ignores.map((s) => `-xr!${s}`).join(" ");
-  } else if (!isWindows && ignores.length > 0) {
+  } else if (!isWindows2 && ignores.length > 0) {
     ignoreOption = ignores.map((s) => `-x ${s}`).join(" ");
   }
-  if (isWindows) {
-    await tools.spawn([`cd ${ROOT}`, `${exe7z} a -tzip ${pathBundleFile} ${files} ${ignoreOption}`].join(" && "));
+  if (isWindows2) {
+    await tools.spawn([`cd ${ROOT}`, `${tools.exe7z} a -tzip ${pathBundleFile} ${files} ${ignoreOption}`].join(" && "));
   } else {
     await tools.spawn([`cd ${ROOT}`, `zip ${pathBundleFile} ${files} ${ignoreOption}`].join(" && "));
   }
-  if (isWindows) {
-    await tools.spawn([`cd ${pathCache}`, `${exe7z} a -tzip -mx=9 ${pathBundleFile} .env`].join(" && "));
+  if (isWindows2) {
+    await tools.spawn([`cd ${pathCache}`, `${tools.exe7z} a -tzip -mx=9 ${pathBundleFile} .env`].join(" && "));
   } else {
     await tools.spawn([`cd ${pathCache}`, `zip -gr9 ${pathBundleFile} .env`].join(" && "));
   }
@@ -713,6 +713,7 @@ const deployLambda = async function(settings) {
   }).promise();
   console.info("## Deploy Lambda Done ! ##");
 };
+const isWindows = process.platform === "win32";
 const deployLayer = async function(setting) {
   const env2 = deployenv();
   const lambda = new AWS.Lambda(env2.AwsConfiguration);
@@ -800,7 +801,11 @@ async function runBundle(setting) {
     }
     fs.promises.writeFile(pathPatchPackage, JSON.stringify(pkg, null, 4));
     await tools.spawn(`cd ${pathPatchNodeJS} && npm i --only=prod`);
-    await tools.spawn(`cd ${pathPatchFolder} && zip ${pathBundle} -r9 nodejs`);
+    if (isWindows) {
+      await tools.spawn(`cd ${pathPatchFolder} && ${tools.exe7z} a -tzip ${pathBundle} nodejs`);
+    } else {
+      await tools.spawn(`cd ${pathPatchFolder} && zip ${pathBundle} -r9 nodejs`);
+    }
     pkg.bundlePath = pathBundle;
   }
   return results;
@@ -811,7 +816,7 @@ async function runDeploy(setting, pitem) {
   console.info(`Publish Layer - ${pitem.name} ...`);
   const res = await lambda.publishLayerVersion({
     LayerName: pitem.name,
-    CompatibleRuntimes: setting.runtimes ?? ["nodejs16.x"],
+    CompatibleRuntimes: setting.runtimes ?? ["nodejs20.x"],
     Content: {
       ZipFile: fs.readFileSync(pitem.bundlePath)
     }
