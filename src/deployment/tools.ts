@@ -40,10 +40,16 @@ export const tools = {
     const isWindows = process.platform === 'win32'
     if (isWindows) {
       const cmds = cmd.split('&&').map((c) => c.trim())
-      cmds.forEach((c) => {
+      for (const c of cmds) {
         console.info(`exec: ${c}`)
-        cp.spawnSync(c, { stdio: 'inherit', shell: true })
-      })
+        await new Promise<void>((resolve, reject) => {
+          cp.spawn(c, { stdio: 'inherit', shell: true })
+            .on('error', (err) => reject(err))
+            .on('close', () => resolve())
+        }).catch((err) => {
+          console.error('Error > ', err)
+        })
+      }
       return Promise.resolve()
     }
     console.info(`exec: ${cmd}`)
