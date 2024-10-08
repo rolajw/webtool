@@ -36,25 +36,25 @@ export const tools = {
     return sha1Hash.digest('hex')
   },
 
-  async spawn(cmd: string): Promise<void> {
-    // const isWindows = process.platform === 'win32'
-    // if (isWindows) {
-    //   const cmds = cmd.split('&&').map((c) => c.trim())
-    //   for (const c of cmds) {
-    //     console.info(`exec: ${c}`)
-    //     await new Promise<void>((resolve, reject) => {
-    //       cp.spawn(c, { stdio: 'inherit', shell: true })
-    //         .on('error', (err) => reject(err))
-    //         .on('close', () => resolve())
-    //     }).catch((err) => {
-    //       console.error('Error > ', err)
-    //     })
-    //   }
-    //   return Promise.resolve()
-    // }
-    // console.info(`exec: ${cmd}`)
+  async spawn(cmd: string, options?: cp.SpawnOptions): Promise<void> {
+    const isWindows = process.platform === 'win32'
+    if (isWindows) {
+      const cmds = cmd.split('&&').map((c) => c.trim())
+      for (const c of cmds) {
+        console.info(`exec: ${c}`)
+        await new Promise<void>((resolve, reject) => {
+          cp.spawn(c, { stdio: 'inherit', shell: true, ...options })
+            .on('error', (err) => reject(err))
+            .on('close', () => resolve())
+        }).catch((err) => {
+          console.error('Error > ', err)
+        })
+      }
+      return Promise.resolve()
+    }
+    console.info(`exec: ${cmd}`)
     return new Promise<void>((resolve, reject) => {
-      cp.spawn(cmd, { shell: true, stdio: 'inherit' })
+      cp.spawn(cmd, { shell: true, stdio: 'inherit', ...options })
         .on('message', (msg) => console.info(`    > msg`))
         .on('error', (err) => reject(err))
         .on('close', (code) => resolve())

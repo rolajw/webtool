@@ -274,9 +274,23 @@ const tools = {
     sha1Hash.update(data);
     return sha1Hash.digest("hex");
   },
-  async spawn(cmd) {
+  async spawn(cmd, options) {
+    const isWindows2 = process.platform === "win32";
+    if (isWindows2) {
+      const cmds = cmd.split("&&").map((c) => c.trim());
+      for (const c of cmds) {
+        console.info(`exec: ${c}`);
+        await new Promise((resolve, reject) => {
+          cp.spawn(c, { stdio: "inherit", shell: true, ...options }).on("error", (err) => reject(err)).on("close", () => resolve());
+        }).catch((err) => {
+          console.error("Error > ", err);
+        });
+      }
+      return Promise.resolve();
+    }
+    console.info(`exec: ${cmd}`);
     return new Promise((resolve, reject) => {
-      cp.spawn(cmd, { shell: true, stdio: "inherit" }).on("message", (msg) => console.info(`    > msg`)).on("error", (err) => reject(err)).on("close", (code) => resolve());
+      cp.spawn(cmd, { shell: true, stdio: "inherit", ...options }).on("message", (msg) => console.info(`    > msg`)).on("error", (err) => reject(err)).on("close", (code) => resolve());
     }).then(() => {
       console.info(`  -> Completed.`);
     }).catch((err) => {
@@ -790,9 +804,9 @@ async function runBundle(setting) {
       fs.mkdirSync(pathPatchNodeJS);
     }
     fs.promises.writeFile(pathPatchPackage, JSON.stringify(pkg, null, 4));
-    await tools.spawn(`cd ${pathPatchNodeJS} && npm i --only=prod`);
+    await tools.spawn(`npm i --only=prod`, { cwd: pathPatchNodeJS });
     if (isWindows) {
-      await tools.spawn(`cd ${pathPatchFolder} && ${tools.exe7z} a -tzip ${pathBundle} nodejs`);
+      await tools.spawn(`${tools.exe7z} a -tzip ${pathBundle} nodejs`, { cwd: pathPatchFolder });
     } else {
       await tools.spawn(`cd ${pathPatchFolder} && zip ${pathBundle} -r9 nodejs`);
     }

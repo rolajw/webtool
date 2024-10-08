@@ -117,10 +117,10 @@ async function runBundle(setting: DeployLayer.Setting): Promise<DeployLayer.Laye
       fs.mkdirSync(pathPatchNodeJS)
     }
     fs.promises.writeFile(pathPatchPackage, JSON.stringify(pkg, null, 4))
-    await tools.spawn(`cd ${pathPatchNodeJS} && npm i --only=prod`)
+    await tools.spawn(`npm i --only=prod`, { cwd: pathPatchNodeJS })
 
     if (isWindows) {
-      await tools.spawn(`cd ${pathPatchFolder} && ${tools.exe7z} a -tzip ${pathBundle} nodejs`)
+      await tools.spawn(`${tools.exe7z} a -tzip ${pathBundle} nodejs`, { cwd: pathPatchFolder })
     } else {
       await tools.spawn(`cd ${pathPatchFolder} && zip ${pathBundle} -r9 nodejs`)
     }
