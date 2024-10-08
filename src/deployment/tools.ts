@@ -35,7 +35,13 @@ export const tools = {
     return sha1Hash.digest('hex')
   },
 
-  spawn(cmd: string): Promise<void> {
+  async spawn(cmd: string): Promise<void> {
+    const isWindows = process.platform === 'win32'
+    if (isWindows) {
+      const cmds = cmd.split('&&').map((c) => c.trim())
+      cmds.forEach((c) => cp.spawnSync(c, { stdio: 'inherit', shell: true }))
+      return Promise.resolve()
+    }
     console.info(`exec: ${cmd}`)
     return new Promise<void>((resolve, reject) => {
       cp.spawn(cmd, { shell: true, stdio: 'ignore' })

@@ -273,7 +273,13 @@ const tools = {
     sha1Hash.update(data);
     return sha1Hash.digest("hex");
   },
-  spawn(cmd) {
+  async spawn(cmd) {
+    const isWindows = process.platform === "win32";
+    if (isWindows) {
+      const cmds = cmd.split("&&").map((c) => c.trim());
+      cmds.forEach((c) => cp.spawnSync(c, { stdio: "inherit", shell: true }));
+      return Promise.resolve();
+    }
     console.info(`exec: ${cmd}`);
     return new Promise((resolve, reject) => {
       cp.spawn(cmd, { shell: true, stdio: "ignore" }).on("message", (msg) => console.info(`    > msg`)).on("error", (err) => reject(err)).on("close", (code) => resolve());
