@@ -275,7 +275,10 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const isWindows = process.platform === "win32";
       if (isWindows) {
         const cmds = cmd.split("&&").map((c) => c.trim());
-        cmds.forEach((c) => cp.spawnSync(c, { stdio: "inherit", shell: true }));
+        cmds.forEach((c) => {
+          console.info(`exec: ${c}`);
+          cp.spawnSync(c, { stdio: "inherit", shell: true });
+        });
         return Promise.resolve();
       }
       console.info(`exec: ${cmd}`);
@@ -653,7 +656,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       await createCloudfrontInvalidations(needUpdateds, settings.waitForInvalidations);
     }
   }
-  const exe7z = "C:\\Program Files\\7-Zip\\7z.exe";
+  const exe7z = '"C:\\Program Files\\7-Zip\\7z.exe"';
   const deployLambda = async function(settings) {
     const env2 = deployenv();
     const pathCache = tools.root(settings.cachePath);

@@ -3,7 +3,7 @@ import { deployenv } from './deploy-env'
 import { tools } from './tools'
 import path from 'path'
 import fs from 'fs'
-const exe7z = 'C:\\Program Files\\7-Zip\\7z.exe'
+const exe7z = '"C:\\Program Files\\7-Zip\\7z.exe"'
 
 export const deployLambda = async function (settings: DeploymentLambda.Setting) {
   const env = deployenv()
