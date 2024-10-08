@@ -647,6 +647,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       await createCloudfrontInvalidations(needUpdateds, settings.waitForInvalidations);
     }
   }
+  const exe7z = "C:\\Program Files\\7-Zip\\7z.exe";
   const deployLambda = async function(settings) {
     const env2 = deployenv();
     const pathCache = tools.root(settings.cachePath);
@@ -667,12 +668,12 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       ignoreOption = ignores.map((s) => `-x ${s}`).join(" ");
     }
     if (isWindows) {
-      await tools.spawn([`cd ${ROOT}`, `7z a -tzip ${pathBundleFile} ${files} ${ignoreOption}`].join(" && "));
+      await tools.spawn([`cd ${ROOT}`, `${exe7z} a -tzip ${pathBundleFile} ${files} ${ignoreOption}`].join(" && "));
     } else {
       await tools.spawn([`cd ${ROOT}`, `zip ${pathBundleFile} ${files} ${ignoreOption}`].join(" && "));
     }
     if (isWindows) {
-      await tools.spawn([`cd ${pathCache}`, `7z a -tzip -mx=9 ${pathBundleFile} .env`].join(" && "));
+      await tools.spawn([`cd ${pathCache}`, `${exe7z} a -tzip -mx=9 ${pathBundleFile} .env`].join(" && "));
     } else {
       await tools.spawn([`cd ${pathCache}`, `zip -gr9 ${pathBundleFile} .env`].join(" && "));
     }
