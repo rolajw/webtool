@@ -273,22 +273,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       return sha1Hash.digest("hex");
     },
     async spawn(cmd) {
-      const isWindows2 = process.platform === "win32";
-      if (isWindows2) {
-        const cmds = cmd.split("&&").map((c) => c.trim());
-        for (const c of cmds) {
-          console.info(`exec: ${c}`);
-          await new Promise((resolve, reject) => {
-            cp.spawn(c, { stdio: "inherit", shell: true }).on("error", (err) => reject(err)).on("close", () => resolve());
-          }).catch((err) => {
-            console.error("Error > ", err);
-          });
-        }
-        return Promise.resolve();
-      }
-      console.info(`exec: ${cmd}`);
       return new Promise((resolve, reject) => {
-        cp.spawn(cmd, { shell: true, stdio: "ignore" }).on("message", (msg) => console.info(`    > msg`)).on("error", (err) => reject(err)).on("close", (code) => resolve());
+        cp.spawn(cmd, { shell: true, stdio: "inherit" }).on("message", (msg) => console.info(`    > msg`)).on("error", (err) => reject(err)).on("close", (code) => resolve());
       }).then(() => {
         console.info(`  -> Completed.`);
       }).catch((err) => {
