@@ -327,6 +327,15 @@ export namespace DeployCloudFront {
     rewriters?: { [path: string]: string }
     waitForInvalidations?: boolean
     ignoreFiles?: (string | RegExp)[]
+    redirectRules?: {
+      /**
+       * example:
+       * {
+       *    'example.com': 'https://www.example.com',
+       * }
+       */
+      host?: Record<string, { location: string; statusCode: 301 | 302; statusDescription?: string }>
+    }
   }
 
   export interface UploadItem {

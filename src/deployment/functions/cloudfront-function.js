@@ -8,13 +8,22 @@ function handler(event) {
   /** @type {{[path: string]: string}} */
   var rewriters = 'REPLACE_REWRITERS'
 
+  var redirectHosts = REPLACE_REDIRECT_HOSTS
+
   var request = event.request
 
-  var headers = request.headers
+  var host = request.headers.host.value
 
-  var encoding = headers['accept-encoding'] ? headers['accept-encoding'].value + ',' : ''
-  headers['accept-encoding'] = {
-    value: encoding + 'br,gzip',
+  if (redirectHosts && redirectHosts[host]) {
+    var redirectTarget = redirectHosts[host]
+    return {
+      statusCode: redirectTarget.statusCode,
+      statusDescription: redirectTarget.statusDescription,
+      headers: {
+        location: { value: redirectTarget.url },
+        'cache-control': { value: 'no-store' },
+      },
+    }
   }
 
   /** @type {string} */
