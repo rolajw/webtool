@@ -444,7 +444,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const cloudfrontFunction = "function handler(event) {\r\n  // replace stage variables\r\n  var webpath = 'REPLACE_PATH_VALUE'\r\n\r\n  // replace index file\r\n  var indexFile = 'REPLACE_INDEX_FILE'\r\n\r\n  /** @type {{[path: string]: string}} */\r\n  var rewriters = 'REPLACE_REWRITERS'\r\n\r\n  var redirectHosts = REPLACE_REDIRECT_HOSTS\r\n\r\n  var request = event.request\r\n\r\n  var host = request.headers.host.value\r\n\r\n  if (redirectHosts && redirectHosts[host]) {\r\n    var redirectTarget = redirectHosts[host]\r\n    return {\r\n      statusCode: redirectTarget.statusCode,\r\n      statusDescription: redirectTarget.statusDescription,\r\n      headers: {\r\n        location: { value: redirectTarget.url },\r\n        'cache-control': { value: 'no-store' },\r\n      },\r\n    }\r\n  }\r\n\r\n  /** @type {string} */\r\n  var uri = request.uri\r\n  if (rewriters && rewriters[uri]) {\r\n    uri = rewriters[uri]\r\n  } else if (uri.endsWith('/') || uri.endsWith('index.html') || !uri.includes('.')) {\r\n    uri = '/' + indexFile\r\n  }\r\n\r\n  if (!uri.startsWith('/')) {\r\n    uri = '/' + uri\r\n  }\r\n\r\n  request.uri = '/' + webpath + uri\r\n\r\n  return request\r\n}\r\n";
   const filterTruthy = (value) => !!value;
   const deployCloudFront = async function(settings) {
-    var _a, _b;
+    var _a, _b, _c;
     const env2 = deployenv();
     const now = (/* @__PURE__ */ new Date()).getTime();
     const webpath = env2.WebRoot;
@@ -502,7 +502,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       );
     });
     await task.start(10).then(() => console.info("upload files completed!"));
-    const code = cloudfrontFunction.toString().replace("REPLACE_PATH_VALUE", webpath).replace("REPLACE_INDEX_FILE", indexFile).replace(`'REPLACE_REWRITERS'`, rewrites);
+    const code = cloudfrontFunction.toString().replace("REPLACE_PATH_VALUE", webpath).replace("REPLACE_INDEX_FILE", indexFile).replace(`'REPLACE_REWRITERS'`, rewrites).replace(`REPLACE_REDIRECT_HOSTS`, JSON.stringify(((_c = settings.redirectRules) == null ? void 0 : _c.host) ?? {}));
     await cloudfront.describeFunction({ Name: env2.CloudFrontFunction }).promise().then((func) => {
       return cloudfront.updateFunction({
         Name: env2.CloudFrontFunction,
@@ -510,7 +510,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         IfMatch: func.ETag || "",
         FunctionConfig: {
           Comment: "",
-          Runtime: "cloudfront-js-1.0"
+          Runtime: "cloudfront-js-2.0"
         }
       }).promise();
     });

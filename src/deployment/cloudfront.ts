@@ -93,6 +93,7 @@ export const deployCloudFront = async function (settings: DeployCloudFront.Setti
     .replace('REPLACE_PATH_VALUE', webpath)
     .replace('REPLACE_INDEX_FILE', indexFile)
     .replace(`'REPLACE_REWRITERS'`, rewrites)
+    .replace(`REPLACE_REDIRECT_HOSTS`, JSON.stringify(settings.redirectRules?.host ?? {}))
 
   await cloudfront
     .describeFunction({ Name: env.CloudFrontFunction })
@@ -105,7 +106,7 @@ export const deployCloudFront = async function (settings: DeployCloudFront.Setti
           IfMatch: func.ETag || '',
           FunctionConfig: {
             Comment: '',
-            Runtime: 'cloudfront-js-1.0',
+            Runtime: 'cloudfront-js-2.0',
           },
         })
         .promise()
