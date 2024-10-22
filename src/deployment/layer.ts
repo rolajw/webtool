@@ -1,14 +1,14 @@
 import fs from 'fs'
 import { deployenv } from './deploy-env'
 import { tools } from './tools'
-import AWS from 'aws-sdk'
+import * as AWSLambda from '@aws-sdk/client-lambda'
 import { Task } from './task'
 
 const isWindows = process.platform === 'win32'
 
 export const deployLayer = async function (setting: DeployLayer.Setting) {
   const env = deployenv()
-  const lambda = new AWS.Lambda(env.AwsConfiguration)
+  const lambda = new AWSLambda.Lambda(env.AwsConfiguration)
 
   const task = new Task()
   const items = await runBundle(setting)
@@ -27,12 +27,10 @@ export const deployLayer = async function (setting: DeployLayer.Setting) {
 
   return task.start(1).then(() => {
     console.info(`Update Function Configuration (${env.LambdaFunction}) ...`)
-    return lambda
-      .updateFunctionConfiguration({
-        FunctionName: env.LambdaFunction,
-        Layers: items.map((o) => o.layerARN),
-      })
-      .promise()
+    return lambda.updateFunctionConfiguration({
+      FunctionName: env.LambdaFunction,
+      Layers: items.map((o) => o.layerARN),
+    })
   })
 }
 
@@ -133,26 +131,22 @@ async function runBundle(setting: DeployLayer.Setting): Promise<DeployLayer.Laye
 
 async function runDeploy(setting: DeployLayer.Setting, pitem: DeployLayer.LayerPatch): Promise<void> {
   const env = deployenv()
-  const lambda = new AWS.Lambda(env.AwsConfiguration)
+  const lambda = new AWSLambda.Lambda(env.AwsConfiguration)
 
   console.info(`Publish Layer - ${pitem.name} ...`)
 
-  const res = await lambda
-    .publishLayerVersion({
-      LayerName: pitem.name,
-      CompatibleRuntimes: setting.runtimes ?? ['nodejs20.x'],
-      Content: {
-        ZipFile: fs.readFileSync(pitem.bundlePath),
-      },
-    })
-    .promise()
+  const res = await lambda.publishLayerVersion({
+    LayerName: pitem.name,
+    CompatibleRuntimes: setting.runtimes ?? ['nodejs20.x'],
+    Content: {
+      ZipFile: fs.readFileSync(pitem.bundlePath),
+    },
+  })
 
-  const vers = await lambda
-    .listLayerVersions({
-      LayerName: pitem.name,
-      MaxItems: 10,
-    })
-    .promise()
+  const vers = await lambda.listLayerVersions({
+    LayerName: pitem.name,
+    MaxItems: 10,
+  })
 
   const layerVersions = Array.from(vers.LayerVersions ?? [])
     .sort((a, b) => (b.Version ?? 0) - (a.Version ?? 0))
@@ -161,18 +155,11 @@ async function runDeploy(setting: DeployLayer.Setting, pitem: DeployLayer.LayerP
   for (let ver of layerVersions) {
     console.info(`Delete Layer Version ${pitem.name}:${ver.Version}`)
     if (ver.Version) {
-      await lambda
-        .deleteLayerVersion({
-          LayerName: pitem.name,
-          VersionNumber: ver.Version,
-        })
-        .promise()
+      await lambda.deleteLayerVersion({
+        LayerName: pitem.name,
+        VersionNumber: ver.Version,
+      })
     }
-  }
-
-  if (!res.LayerVersionArn) {
-    console.error(res.$response.error)
-    throw new Error('version not found')
   }
 
   if (res.LayerVersionArn) {
@@ -185,7 +172,7 @@ async function runDeploy(setting: DeployLayer.Setting, pitem: DeployLayer.LayerP
 export namespace DeployLayer {
   export interface Setting {
     patchs?: { [name: string]: string[] }
-    runtimes?: string[]
+    runtimes?: AWSLambda.Runtime[]
   }
 
   export interface LayerPatch {

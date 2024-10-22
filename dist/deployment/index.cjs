@@ -1,249 +1,29 @@
 (function(global, factory) {
-  typeof exports === "object" && typeof module !== "undefined" ? factory(exports, require("aws-sdk"), require("fs"), require("path"), require("child_process"), require("crypto"), require("process")) : typeof define === "function" && define.amd ? define(["exports", "aws-sdk", "fs", "path", "child_process", "crypto", "process"], factory) : (global = typeof globalThis !== "undefined" ? globalThis : global || self, factory(global.Deployment = {}, global.AWS, global.fs, global.path, global.cp, global.crypto, global.process$1));
-})(this, function(exports2, AWS, fs, path, cp, crypto, process$1) {
+  typeof exports === "object" && typeof module !== "undefined" ? factory(exports, require("fs"), require("path"), require("child_process"), require("crypto"), require("@aws-sdk/client-cloudfront"), require("@aws-sdk/client-s3"), require("process"), require("@aws-sdk/client-lambda")) : typeof define === "function" && define.amd ? define(["exports", "fs", "path", "child_process", "crypto", "@aws-sdk/client-cloudfront", "@aws-sdk/client-s3", "process", "@aws-sdk/client-lambda"], factory) : (global = typeof globalThis !== "undefined" ? globalThis : global || self, factory(global.Deployment = {}, global.fs, global.path, global.cp, global.crypto, global.AWSCloudfront, global.AWSS3, global.process$1, global.AWSLambda));
+})(this, function(exports2, fs, path, cp, crypto, AWSCloudfront, AWSS3, process$1, AWSLambda) {
   "use strict";var __defProp = Object.defineProperty;
 var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
 var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 
-  class APIGatewayService {
-    constructor(env2, api) {
-      /**
-       *
-       * @param {typeof DeployEnv} env
-       */
-      /**
-       *
-       * @param {typeof DeployEnv} env
-       * @param {AWS.APIGateway.RestApi} api
-       */
-      __publicField(this, "api");
-      __publicField(this, "env");
-      __publicField(this, "lambda");
-      __publicField(this, "apigateway");
-      __publicField(this, "resources", []);
-      __publicField(this, "accountId", null);
-      __publicField(this, "deployments", []);
-      this.api = api;
-      this.env = env2;
-      this.lambda = new AWS.Lambda(env2.AwsConfiguration);
-      this.apigateway = new AWS.APIGateway(env2.AwsConfiguration);
-    }
-    get restApiId() {
-      if (!this.api.id) {
-        throw new Error("restApiId is empty");
-      }
-      return this.api.id;
-    }
-    async getAccountId() {
-      if (!this.accountId) {
-        const sts = new AWS.STS(this.env.AwsConfiguration);
-        const res = await sts.getCallerIdentity().promise();
-        this.accountId = res.Account || null;
-      }
-      return this.accountId;
-    }
-    async getRestAPIOrCreate(id) {
-      const find = id ? this.apigateway.getRestApi({ restApiId: id }).promise().catch(this.handleNotFoundError) : null;
-      if (!find) {
-        this.api = await this.apigateway.createRestApi({
-          name: this.env.LambdaFunction
-        }).promise();
-      }
-      return this.api;
-    }
-    handleNotFoundError(err) {
-      return ["ResourceNotFoundException", "NotFoundException"].includes(err.name) ? null : Promise.reject(err);
-    }
-    async getResourceOrCreate(path2) {
-      if (this.resources.length === 0) {
-        const res = await this.apigateway.getResources({
-          restApiId: this.restApiId,
-          limit: 500
-        }).promise();
-        this.resources = Array.from(res.items || []);
-      }
-      const find = this.resources.find((r) => r.path === path2);
-      if (find) {
-        return find;
-      }
-      const paths = path2.split("/");
-      const currentPath = paths.pop();
-      const parentPath = paths.join("/") || "/";
-      const parent = await this.getResourceOrCreate(parentPath);
-      if (!parent.id || !currentPath) {
-        throw new Error("unknown partent.id or currentPath");
-      }
-      const resource = await this.apigateway.createResource(
-        {
-          restApiId: this.restApiId,
-          parentId: parent.id,
-          pathPart: currentPath
-        },
-        void 0
-      ).promise();
-      this.resources.push(resource);
-      return resource;
-    }
-    async getMethodOrCreate(resource, httpMethod) {
-      const find = await this.apigateway.getMethod(
-        {
-          restApiId: this.restApiId,
-          resourceId: resource.id || "",
-          httpMethod
-        },
-        void 0
-      ).promise().catch(this.handleNotFoundError);
-      if (find) {
-        return find;
-      }
-      if (!resource.id) {
-        throw new Error("unknown resource.id");
-      }
-      return await this.apigateway.putMethod(
-        {
-          restApiId: this.restApiId,
-          resourceId: resource.id,
-          httpMethod,
-          authorizationType: "NONE"
-        },
-        void 0
-      ).promise();
-    }
-    async getIntegrationOrCreate(resource, method) {
-      if (!resource.id || !method.httpMethod) {
-        throw new Error("unknown resource.id or method.httpMethod");
-      }
-      await this.apigateway.deleteIntegration(
-        {
-          restApiId: this.restApiId,
-          resourceId: resource.id,
-          httpMethod: method.httpMethod
-        },
-        void 0
-      ).promise().catch(this.handleNotFoundError);
-      const func = await this.lambda.getFunction({ FunctionName: this.env.LambdaFunction }).promise();
-      if (!func.Configuration) {
-        throw new Error("unknown func.Configuration");
-      }
-      const uri = `arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/${func.Configuration.FunctionArn}/invocations`;
-      await this.apigateway.putIntegration({
-        restApiId: this.restApiId,
-        resourceId: resource.id,
-        httpMethod: method.httpMethod,
-        type: "AWS_PROXY",
-        integrationHttpMethod: "POST",
-        uri
-      }).promise();
-    }
-    async updateLambdaPermission(resource, method) {
-      const FunctionName = this.env.LambdaFunction;
-      const StatementId = [this.restApiId, resource.id, method.httpMethod].join("-");
-      await this.lambda.removePermission({
-        FunctionName,
-        StatementId
-      }).promise().catch(this.handleNotFoundError);
-      const accountId = await this.getAccountId();
-      const SourceArn = [
-        `arn:aws:execute-api:${this.env.AwsRegion}:${accountId}:${this.restApiId}`,
-        `/*/${method.httpMethod}${resource.path}`
-      ].join("");
-      await this.lambda.addPermission({
-        FunctionName,
-        StatementId,
-        Action: "lambda:InvokeFunction",
-        Principal: "apigateway.amazonaws.com",
-        SourceArn
-      }).promise();
-    }
-    async addRoute(httpMethod, path2) {
-      const resource = await this.getResourceOrCreate(path2);
-      const method = await this.getMethodOrCreate(resource, httpMethod);
-      await this.getIntegrationOrCreate(resource, method);
-      await this.updateLambdaPermission(resource, method);
-    }
-    async deployStage() {
-      if (this.deployments.length === 0) {
-        const res = await this.apigateway.getDeployments({
-          restApiId: this.restApiId,
-          limit: 500
-        }).promise();
-        this.deployments = Array.from(res.items || []);
-      }
-      if (this.deployments.length === 0) {
-        const deployment2 = await this.apigateway.createDeployment({
-          restApiId: this.restApiId,
-          stageName: this.env.Stage
-        }).promise();
-        this.deployments.push(deployment2);
-        return;
-      }
-      this.apigateway.flushStageCache({
-        restApiId: this.restApiId,
-        stageName: this.env.Stage
-      });
-    }
-  }
-  const env = {
-    Version: "0.0.0",
-    AwsID: "",
-    AwsKey: "",
-    AwsRegion: "",
-    AwsS3: "",
-    CloudFrontFunction: "",
-    Stage: "",
-    LambdaFunction: "",
-    DistributionId: "",
-    LambdaLayer: "",
-    WebRoot: "",
-    PackageContent: { version: "0.0.0", dependencies: {} },
-    AwsConfiguration: {
-      region: "",
-      credentials: null
-    }
-  };
-  const updateDeployEnv = (packageContent, data) => {
-    env.Version = packageContent.version ?? "0.0.0";
-    env.DistributionId = (data == null ? void 0 : data.distributionid) ?? env.DistributionId;
-    env.AwsID = (data == null ? void 0 : data.awsid) ?? env.AwsID;
-    env.AwsKey = (data == null ? void 0 : data.awskey) ?? env.AwsKey;
-    env.AwsRegion = (data == null ? void 0 : data.awsregion) ?? env.AwsRegion;
-    env.AwsS3 = (data == null ? void 0 : data.s3bucket) ?? env.AwsS3;
-    env.CloudFrontFunction = (data == null ? void 0 : data.cloudfrontfunction) ?? env.CloudFrontFunction;
-    env.Stage = (data == null ? void 0 : data.stage) ?? env.Stage;
-    env.LambdaFunction = (data == null ? void 0 : data.lambdafunction) ?? env.LambdaFunction;
-    env.LambdaLayer = (data == null ? void 0 : data.lambdalayer) ?? env.LambdaLayer;
-    env.WebRoot = (data == null ? void 0 : data.webroot) ?? env.WebRoot;
-    env.PackageContent = packageContent;
-    if (env.AwsID || env.AwsKey) {
-      env.AwsConfiguration = {
-        region: env.AwsRegion,
-        credentials: {
-          accessKeyId: env.AwsID,
-          secretAccessKey: env.AwsKey
+  function _interopNamespaceDefault(e) {
+    const n = Object.create(null, { [Symbol.toStringTag]: { value: "Module" } });
+    if (e) {
+      for (const k in e) {
+        if (k !== "default") {
+          const d = Object.getOwnPropertyDescriptor(e, k);
+          Object.defineProperty(n, k, d.get ? d : {
+            enumerable: true,
+            get: () => e[k]
+          });
         }
-      };
-    } else {
-      const myconfig = new AWS.Config();
-      myconfig.update({ region: env.AwsRegion });
-      env.AwsConfiguration.region = env.AwsRegion;
-      env.AwsConfiguration.credentials = myconfig.credentials || void 0;
+      }
     }
-  };
-  const deployenv = () => {
-    if (!env.AwsRegion) {
-      throw new Error(`REGION is required`);
-    }
-    if (!env.AwsS3) {
-      throw new Error(`S3 is required`);
-    }
-    if (!env.CloudFrontFunction) {
-      throw new Error(`FUNC is required`);
-    }
-    if (!env.Stage) {
-      throw new Error(`STAGE is required`);
-    }
-    return env;
-  };
+    n.default = e;
+    return Object.freeze(n);
+  }
+  const AWSCloudfront__namespace = /* @__PURE__ */ _interopNamespaceDefault(AWSCloudfront);
+  const AWSS3__namespace = /* @__PURE__ */ _interopNamespaceDefault(AWSS3);
+  const AWSLambda__namespace = /* @__PURE__ */ _interopNamespaceDefault(AWSLambda);
   const cwd = process.cwd();
   const tools = {
     exe7z: '"C:\\Program Files\\7-Zip\\7z.exe"',
@@ -372,42 +152,78 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     loadJSON(filepath) {
       const buffer = fs.readFileSync(filepath, "utf8");
       return JSON.parse(buffer);
-    },
-    loadDeployment(stage) {
-      const pathDeployment = this.root(`.deployment/${stage}.json`);
-      if (this.stat(pathDeployment)) {
-        return this.loadJSON(pathDeployment);
-      }
-      return null;
-    },
-    saveDeployment(stage, content) {
-      const dirDeployment = this.root(".deployment");
-      const pathDeployment = this.root(`.deployment/${stage}.json`);
-      if (!this.stat(dirDeployment)) {
-        fs.mkdirSync(dirDeployment);
-      }
-      fs.writeFileSync(pathDeployment, JSON.stringify(content, null, 4));
+    }
+    // loadDeployment(stage: string): Tools.DeploymentRecord | null {
+    //   const pathDeployment = this.root(`.deployment/${stage}.json`)
+    //   if (this.stat(pathDeployment)) {
+    //     return this.loadJSON(pathDeployment)
+    //   }
+    //   return null
+    // },
+    // saveDeployment(stage: string, content: Tools.DeploymentRecord) {
+    //   const dirDeployment = this.root('.deployment')
+    //   const pathDeployment = this.root(`.deployment/${stage}.json`)
+    //   if (!this.stat(dirDeployment)) {
+    //     fs.mkdirSync(dirDeployment)
+    //   }
+    //   fs.writeFileSync(pathDeployment, JSON.stringify(content, null, 4))
+    // },
+  };
+  const env = {
+    Version: "0.0.0",
+    AwsID: "",
+    AwsKey: "",
+    AwsRegion: "",
+    AwsS3: "",
+    CloudFrontFunction: "",
+    Stage: "",
+    LambdaFunction: "",
+    DistributionId: "",
+    LambdaLayer: "",
+    WebRoot: "",
+    PackageContent: { version: "0.0.0", dependencies: {} },
+    AwsConfiguration: {
+      region: "",
+      credentials: null
     }
   };
-  const deployAPIGateway = async function() {
-    const env2 = deployenv();
-    const apigateway = new AWS.APIGateway(env2.AwsConfiguration);
-    const deployment2 = tools.loadDeployment(env2.Stage) ?? {
-      ApiGateway: { id: "" }
-    };
-    let api = deployment2.ApiGateway.id ? await apigateway.getRestApi({ restApiId: deployment2.ApiGateway.id }).promise().catch((err) => err.name === "NotFoundException" ? null : Promise.reject(err)) : null;
-    if (!api) {
-      api = await apigateway.createRestApi({ name: env2.LambdaFunction }).promise();
+  const updateDeployEnv = (packageContent, data) => {
+    env.Version = packageContent.version ?? "0.0.0";
+    env.DistributionId = (data == null ? void 0 : data.distributionid) ?? env.DistributionId;
+    env.AwsID = (data == null ? void 0 : data.awsid) ?? env.AwsID;
+    env.AwsKey = (data == null ? void 0 : data.awskey) ?? env.AwsKey;
+    env.AwsRegion = (data == null ? void 0 : data.awsregion) ?? env.AwsRegion;
+    env.AwsS3 = (data == null ? void 0 : data.s3bucket) ?? env.AwsS3;
+    env.CloudFrontFunction = (data == null ? void 0 : data.cloudfrontfunction) ?? env.CloudFrontFunction;
+    env.Stage = (data == null ? void 0 : data.stage) ?? env.Stage;
+    env.LambdaFunction = (data == null ? void 0 : data.lambdafunction) ?? env.LambdaFunction;
+    env.LambdaLayer = (data == null ? void 0 : data.lambdalayer) ?? env.LambdaLayer;
+    env.WebRoot = (data == null ? void 0 : data.webroot) ?? env.WebRoot;
+    env.PackageContent = packageContent;
+    if (env.AwsID || env.AwsKey) {
+      env.AwsConfiguration = {
+        region: env.AwsRegion
+        // credentials: {
+        //   accessKeyId: env.AwsID,
+        //   secretAccessKey: env.AwsKey,
+        // },
+      };
     }
-    if (!api.id) {
-      throw new Error("unknown api.id");
+  };
+  const deployenv = () => {
+    if (!env.AwsRegion) {
+      throw new Error(`REGION is required`);
     }
-    const apiservice = new APIGatewayService(env2, api);
-    deployment2.ApiGateway.id = api.id;
-    tools.saveDeployment(env2.Stage, deployment2);
-    await apiservice.addRoute("ANY", "/");
-    await apiservice.addRoute("ANY", "/{proxy+}");
-    await apiservice.deployStage();
+    if (!env.AwsS3) {
+      throw new Error(`S3 is required`);
+    }
+    if (!env.CloudFrontFunction) {
+      throw new Error(`FUNC is required`);
+    }
+    if (!env.Stage) {
+      throw new Error(`STAGE is required`);
+    }
+    return env;
   };
   class Task {
     constructor() {
@@ -450,8 +266,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     const webpath = env2.WebRoot;
     const indexFile = `index.${now}.html`;
     const rewrites = settings.rewriters ? JSON.stringify(settings.rewriters) : "{}";
-    const s3 = new AWS.S3(env2.AwsConfiguration);
-    const cloudfront = new AWS.CloudFront(env2.AwsConfiguration);
+    const s3 = new AWSS3__namespace.S3(env2.AwsConfiguration);
+    const cloudfront = new AWSCloudfront__namespace.CloudFront(env2.AwsConfiguration);
     if (!env2.WebRoot.startsWith("website")) {
       throw new Error(`WebRoot must start with website.  Found: ${env2.WebRoot}`);
     }
@@ -486,13 +302,13 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const fileUploadKey = file.uploadpath.replaceAll("\\", "/");
       task.add(
         () => fs.promises.readFile(file.filepath).then(
-          (buffer) => s3.upload({
+          (buffer) => s3.putObject({
             Bucket: env2.AwsS3,
             Key: fileUploadKey,
             Body: buffer,
             ACL: settings.fileACL ?? "private",
             ContentType: file.contentType
-          }).promise().then(() => {
+          }).then(() => {
             uploads.push({
               key: fileUploadKey,
               sha1: tools.sha1(buffer)
@@ -503,22 +319,22 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     });
     await task.start(10).then(() => console.info("upload files completed!"));
     const code = cloudfrontFunction.toString().replace("REPLACE_PATH_VALUE", webpath).replace("REPLACE_INDEX_FILE", indexFile).replace(`'REPLACE_REWRITERS'`, rewrites).replace(`REPLACE_REDIRECT_HOSTS`, JSON.stringify(((_c = settings.redirectRules) == null ? void 0 : _c.host) ?? {}));
-    await cloudfront.describeFunction({ Name: env2.CloudFrontFunction }).promise().then((func) => {
+    await cloudfront.describeFunction({ Name: env2.CloudFrontFunction }).then((func) => {
       return cloudfront.updateFunction({
         Name: env2.CloudFrontFunction,
-        FunctionCode: code,
+        FunctionCode: Buffer.from(code, "utf-8"),
         IfMatch: func.ETag || "",
         FunctionConfig: {
           Comment: "",
           Runtime: "cloudfront-js-2.0"
         }
-      }).promise();
+      });
     });
-    await cloudfront.describeFunction({ Name: env2.CloudFrontFunction }).promise().then((func) => {
+    await cloudfront.describeFunction({ Name: env2.CloudFrontFunction }).then((func) => {
       return cloudfront.publishFunction({
         Name: env2.CloudFrontFunction,
         IfMatch: func.ETag || ""
-      }).promise();
+      });
     });
     console.info("update change log");
     await clearFiles(settings, uploads);
@@ -526,7 +342,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   };
   async function createCloudfrontInvalidations(paths, waiting = true) {
     const env2 = deployenv();
-    const cloudfront = new AWS.CloudFront(env2.AwsConfiguration);
+    const cloudfront = new AWSCloudfront__namespace.CloudFront(env2.AwsConfiguration);
     if (!env2.DistributionId) {
       throw new Error("env.distributionid is required!!");
     }
@@ -540,14 +356,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           Items: paths
         }
       }
-    }).promise().then((res) => {
-      if (res.$response.error) {
-        return Promise.reject(res.$response.error);
-      }
-      if (!res.$response.data) {
-        return Promise.reject(new Error("create invalidations response empty"));
-      }
-      return res.$response.data;
     }).then((res) => {
       var _a;
       if (!waiting) {
@@ -555,36 +363,41 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         return null;
       }
       console.info("Wait for invalidation completing ...");
-      return cloudfront.waitFor("invalidationCompleted", {
-        DistributionId: env2.DistributionId,
-        Id: ((_a = res.Invalidation) == null ? void 0 : _a.Id) ?? ""
-      }).promise();
-    }).then((res) => {
-      if (res == null ? void 0 : res.$response.error) {
-        return Promise.reject(res.$response.error);
-      }
+      return AWSCloudfront__namespace.waitUntilInvalidationCompleted(
+        {
+          client: cloudfront,
+          maxWaitTime: 6e4
+        },
+        {
+          DistributionId: env2.DistributionId,
+          Id: ((_a = res.Invalidation) == null ? void 0 : _a.Id) ?? ""
+        }
+      );
+    }).catch((err) => {
+      console.error(err);
+      return Promise.reject(err);
     });
   }
   async function clearFiles(settings, uploads) {
     var _a;
     const env2 = deployenv();
-    const s3 = new AWS.S3(env2.AwsConfiguration);
+    const s3 = new AWSS3__namespace.S3(env2.AwsConfiguration);
     const now = (/* @__PURE__ */ new Date()).getTime();
     const prefixUploads = `${env2.WebRoot}/.uploads`;
     const uploadRecord = `${prefixUploads}/v${env2.Version}-${now}.json`.replaceAll("\\", "/");
     const res = await s3.listObjectsV2({
       Bucket: env2.AwsS3,
       Prefix: `${prefixUploads}/`
-    }).promise();
-    await s3.upload({
+    });
+    await s3.putObject({
       Bucket: env2.AwsS3,
       Key: uploadRecord,
       Body: JSON.stringify(uploads),
       ACL: settings.fileACL ?? "private",
       ContentType: "application/json"
-    }).promise();
+    });
     const files = /* @__PURE__ */ new Map();
-    const records = (res.$response.data && res.$response.data.Contents || []).sort(
+    const records = (res.Contents || []).sort(
       (b, a) => (a.LastModified ? new Date(a.LastModified).getTime() : 0) - (b.LastModified ? new Date(b.LastModified).getTime() : 0)
     );
     const deleteRecords = records.splice(settings.reverses ?? 1).map((r) => ({ Key: r.Key }));
@@ -594,7 +407,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         Delete: {
           Objects: deleteRecords
         }
-      }).promise();
+      });
     }
     for (const ritem of records) {
       if (!ritem.Key) {
@@ -603,7 +416,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       const res2 = await s3.getObject({
         Bucket: env2.AwsS3,
         Key: ritem.Key
-      }).promise();
+      });
       JSON.parse(((_a = res2.Body) == null ? void 0 : _a.toString()) ?? "[]").forEach((item) => {
         if (!files.has(item.key)) {
           files.set(item.key, {
@@ -633,8 +446,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         Bucket: env2.AwsS3,
         Prefix: env2.WebRoot + (env2.WebRoot.endsWith("/") ? "" : "/"),
         StartAfter: startAfterKey
-      }).promise();
-      const contents = res2.$response.data && res2.$response.data.Contents || [];
+      });
+      const contents = res2.Contents || [];
       contents.forEach((o) => {
         if (!o.Key || o.Key.startsWith(`${prefixUploads}`) || files.has(o.Key)) {
           return;
@@ -654,7 +467,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         Delete: {
           Objects: deletes.splice(0, 1e3)
         }
-      }).promise();
+      });
     }
     const needUpdateds = Array.from(files.values()).filter((f) => f.hasUpdated).map((o) => `/${o.key}`);
     if (needUpdateds.length) {
@@ -667,7 +480,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     const ROOT = tools.root();
     const pathBundleFile = path.resolve(pathCache, "bundle.zip");
     const pathENV = path.resolve(pathCache, ".env");
-    const lambda = new AWS.Lambda(env2.AwsConfiguration);
+    const lambda = new AWSLambda__namespace.Lambda({ region: env2.AwsRegion });
     const isWindows2 = process.platform === "win32";
     tools.remove(pathBundleFile);
     tools.remove(pathENV);
@@ -690,35 +503,76 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     } else {
       await tools.spawn([`cd ${pathCache}`, `zip -gr9 ${pathBundleFile} .env`].join(" && "));
     }
-    const func = await lambda.getFunction({ FunctionName: env2.LambdaFunction }).promise().catch((err) => err.name === "ResourceNotFoundException" ? null : Promise.reject(err));
+    const func = await lambda.getFunction({ FunctionName: env2.LambdaFunction }).catch((err) => err.name === "ResourceNotFoundException" ? null : Promise.reject(err));
     if (!func) {
       await lambda.createFunction({
         Code: {
           ZipFile: fs.readFileSync(pathBundleFile)
         },
         FunctionName: env2.LambdaFunction,
-        Runtime: settings.runtime ?? "nodejs16.x",
+        Runtime: settings.runtime ?? "nodejs20.x",
         MemorySize: 2048,
         Timeout: 60,
         Role: "arn:aws:iam::081743246838:role/Lambda_S3+SQS+RDS",
         Handler: "lambda.handler"
-      }).promise();
+      });
     } else {
       await lambda.updateFunctionCode({
         ZipFile: fs.readFileSync(pathBundleFile),
         FunctionName: env2.LambdaFunction
-      }).promise();
+      });
     }
     console.info("waiting funciton update...");
-    await lambda.waitFor("functionUpdatedV2", {
-      FunctionName: env2.LambdaFunction
-    }).promise();
+    AWSLambda__namespace.waitUntilFunctionUpdatedV2(
+      {
+        client: lambda,
+        maxWaitTime: 6e4,
+        minDelay: 5e3
+      },
+      {
+        FunctionName: env2.LambdaFunction
+      }
+    );
     console.info("## Deploy Lambda Done ! ##");
+    if (settings.cloudfrontFunction) {
+      const funcName = settings.cloudfrontFunction.functionName;
+      const cloudfront = new AWSCloudfront__namespace.CloudFront({ region: env2.AwsRegion });
+      const func2 = await cloudfront.describeFunction({ Name: settings.cloudfrontFunction.functionName }).catch((err) => err.name === "ResourceNotFoundException" ? null : Promise.reject(err));
+      if (!func2) {
+        await cloudfront.createFunction({
+          Name: settings.cloudfrontFunction.functionName,
+          // convert to uint8array from string
+          FunctionCode: Buffer.from(settings.cloudfrontFunction.functionCode, "utf-8"),
+          FunctionConfig: {
+            Comment: "",
+            Runtime: "cloudfront-js-2.0"
+          }
+        });
+      } else {
+        await cloudfront.updateFunction({
+          Name: settings.cloudfrontFunction.functionName,
+          FunctionCode: Buffer.from(settings.cloudfrontFunction.functionCode, "utf-8"),
+          IfMatch: func2.ETag || "",
+          FunctionConfig: {
+            Comment: "",
+            Runtime: "cloudfront-js-2.0"
+          }
+        });
+      }
+      console.info("waiting cloudfront function update...");
+      await cloudfront.describeFunction({ Name: funcName }).then((func3) => {
+        return cloudfront.publishFunction({
+          Name: funcName,
+          IfMatch: func3.ETag || ""
+        });
+      });
+      console.info("## Deploy Cloudfront Function Done ! ##");
+    }
   };
   const isWindows = process.platform === "win32";
   const deployLayer = async function(setting) {
     const env2 = deployenv();
-    const lambda = new AWS.Lambda(env2.AwsConfiguration);
+    const lambda = new AWSLambda__namespace.Lambda(env2.AwsConfiguration);
     const task = new Task();
     const items = await runBundle(setting);
     items.forEach((o) => {
@@ -737,7 +591,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       return lambda.updateFunctionConfiguration({
         FunctionName: env2.LambdaFunction,
         Layers: items.map((o) => o.layerARN)
-      }).promise();
+      });
     });
   };
   async function patchPackages(patchs) {
@@ -814,7 +668,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   }
   async function runDeploy(setting, pitem) {
     const env2 = deployenv();
-    const lambda = new AWS.Lambda(env2.AwsConfiguration);
+    const lambda = new AWSLambda__namespace.Lambda(env2.AwsConfiguration);
     console.info(`Publish Layer - ${pitem.name} ...`);
     const res = await lambda.publishLayerVersion({
       LayerName: pitem.name,
@@ -822,11 +676,11 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       Content: {
         ZipFile: fs.readFileSync(pitem.bundlePath)
       }
-    }).promise();
+    });
     const vers = await lambda.listLayerVersions({
       LayerName: pitem.name,
       MaxItems: 10
-    }).promise();
+    });
     const layerVersions = Array.from(vers.LayerVersions ?? []).sort((a, b) => (b.Version ?? 0) - (a.Version ?? 0)).slice(3);
     for (let ver of layerVersions) {
       console.info(`Delete Layer Version ${pitem.name}:${ver.Version}`);
@@ -834,12 +688,8 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         await lambda.deleteLayerVersion({
           LayerName: pitem.name,
           VersionNumber: ver.Version
-        }).promise();
+        });
       }
-    }
-    if (!res.LayerVersionArn) {
-      console.error(res.$response.error);
-      throw new Error("version not found");
     }
     if (res.LayerVersionArn) {
       pitem.layerARN = res.LayerVersionArn;
@@ -878,9 +728,6 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         throw new Error(`lambda settings is required`);
       }
       await deployLayer(options.layer);
-    }
-    if (tools.opt("--api")) {
-      await deployAPIGateway();
     }
   }
   exports2.commandArgv = commandArgv;

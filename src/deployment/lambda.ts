@@ -1,4 +1,5 @@
-import AWS from 'aws-sdk'
+import * as AWSLambda from '@aws-sdk/client-lambda'
+import * as AWSCloudfront from '@aws-sdk/client-cloudfront'
 import { deployenv } from './deploy-env'
 import { tools } from './tools'
 import path from 'path'
@@ -10,7 +11,7 @@ export const deployLambda = async function (settings: DeploymentLambda.Setting) 
   const ROOT = tools.root()
   const pathBundleFile = path.resolve(pathCache, 'bundle.zip')
   const pathENV = path.resolve(pathCache, '.env')
-  const lambda = new AWS.Lambda(env.AwsConfiguration)
+  const lambda = new AWSLambda.Lambda({ region: env.AwsRegion })
   const isWindows = process.platform === 'win32'
 
   // clear cache files
@@ -59,39 +60,77 @@ export const deployLambda = async function (settings: DeploymentLambda.Setting) 
   // get lambda
   const func = await lambda
     .getFunction({ FunctionName: env.LambdaFunction })
-    .promise()
     .catch((err) => (err.name === 'ResourceNotFoundException' ? null : Promise.reject(err)))
 
   if (!func) {
     // create lambda
-    await lambda
-      .createFunction({
-        Code: {
-          ZipFile: fs.readFileSync(pathBundleFile),
-        },
-        FunctionName: env.LambdaFunction,
-        Runtime: settings.runtime ?? 'nodejs16.x',
-        MemorySize: 2048,
-        Timeout: 60,
-        Role: 'arn:aws:iam::081743246838:role/Lambda_S3+SQS+RDS',
-        Handler: 'lambda.handler',
-      })
-      .promise()
-  } else {
-    await lambda
-      .updateFunctionCode({
+    await lambda.createFunction({
+      Code: {
         ZipFile: fs.readFileSync(pathBundleFile),
-        FunctionName: env.LambdaFunction,
-      })
-      .promise()
-  }
-  console.info('waiting funciton update...')
-  await lambda
-    .waitFor('functionUpdatedV2', {
+      },
+      FunctionName: env.LambdaFunction,
+      Runtime: settings.runtime ?? 'nodejs20.x',
+      MemorySize: 2048,
+      Timeout: 60,
+      Role: 'arn:aws:iam::081743246838:role/Lambda_S3+SQS+RDS',
+      Handler: 'lambda.handler',
+    })
+  } else {
+    await lambda.updateFunctionCode({
+      ZipFile: fs.readFileSync(pathBundleFile),
       FunctionName: env.LambdaFunction,
     })
-    .promise()
+  }
+  console.info('waiting funciton update...')
+  AWSLambda.waitUntilFunctionUpdatedV2(
+    {
+      client: lambda,
+      maxWaitTime: 60000,
+      minDelay: 5000,
+    },
+    {
+      FunctionName: env.LambdaFunction,
+    }
+  )
   console.info('## Deploy Lambda Done ! ##')
+
+  if (settings.cloudfrontFunction) {
+    const funcName = settings.cloudfrontFunction.functionName
+    const cloudfront = new AWSCloudfront.CloudFront({ region: env.AwsRegion })
+    const func = await cloudfront
+      .describeFunction({ Name: settings.cloudfrontFunction.functionName })
+      .catch((err) => (err.name === 'ResourceNotFoundException' ? null : Promise.reject(err)))
+
+    if (!func) {
+      await cloudfront.createFunction({
+        Name: settings.cloudfrontFunction.functionName,
+        // convert to uint8array from string
+        FunctionCode: Buffer.from(settings.cloudfrontFunction.functionCode, 'utf-8'),
+        FunctionConfig: {
+          Comment: '',
+          Runtime: 'cloudfront-js-2.0',
+        },
+      })
+    } else {
+      await cloudfront.updateFunction({
+        Name: settings.cloudfrontFunction.functionName,
+        FunctionCode: Buffer.from(settings.cloudfrontFunction.functionCode, 'utf-8'),
+        IfMatch: func.ETag || '',
+        FunctionConfig: {
+          Comment: '',
+          Runtime: 'cloudfront-js-2.0',
+        },
+      })
+    }
+    console.info('waiting cloudfront function update...')
+    await cloudfront.describeFunction({ Name: funcName }).then((func) => {
+      return cloudfront.publishFunction({
+        Name: funcName,
+        IfMatch: func.ETag || '',
+      })
+    })
+    console.info('## Deploy Cloudfront Function Done ! ##')
+  }
 }
 
 export namespace DeploymentLambda {
@@ -99,6 +138,10 @@ export namespace DeploymentLambda {
     cachePath: string
     files: string[]
     ignoreFiles?: string[]
-    runtime?: string
+    runtime?: AWSLambda.Runtime
+    cloudfrontFunction?: {
+      functionName: string
+      functionCode: string
+    }
   }
 }

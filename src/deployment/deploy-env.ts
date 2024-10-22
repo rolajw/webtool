@@ -1,5 +1,3 @@
-import AWS from 'aws-sdk'
-
 const env: DeployEnv = {
   Version: '0.0.0',
 
@@ -37,16 +35,16 @@ export const updateDeployEnv = (packageContent: PackageContent, data?: UpdateDep
   if (env.AwsID || env.AwsKey) {
     env.AwsConfiguration = {
       region: env.AwsRegion,
-      credentials: {
-        accessKeyId: env.AwsID,
-        secretAccessKey: env.AwsKey,
-      },
+      // credentials: {
+      //   accessKeyId: env.AwsID,
+      //   secretAccessKey: env.AwsKey,
+      // },
     }
-  } else {
-    const myconfig = new AWS.Config()
-    myconfig.update({ region: env.AwsRegion })
-    env.AwsConfiguration.region = env.AwsRegion
-    env.AwsConfiguration.credentials = myconfig.credentials || undefined
+    // } else {
+    //   const myconfig = new AWS.Config()
+    //   myconfig.update({ region: env.AwsRegion })
+    //   env.AwsConfiguration.region = env.AwsRegion
+    //   env.AwsConfiguration.credentials = myconfig.credentials || undefined
   }
 }
 

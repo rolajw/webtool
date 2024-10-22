@@ -1,4 +1,3 @@
-import { deployAPIGateway } from './apigateway'
 import { tools } from './tools'
 import {
   DeployCloudFront,
@@ -35,7 +34,7 @@ export async function deployment(options: DeploymentOptions) {
     if (!options.cloudfront) {
       throw new Error(`cludfront settings is required`)
     }
-    
+
     await deployCloudFront(options.cloudfront)
   }
 
@@ -68,9 +67,5 @@ export async function deployment(options: DeploymentOptions) {
     //     'vue3-google-map',
     //   ],
     // },
-  }
-
-  if (tools.opt('--api')) {
-    await deployAPIGateway()
   }
 }

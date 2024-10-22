@@ -165,23 +165,23 @@ export const tools = {
     return JSON.parse(buffer)
   },
 
-  loadDeployment(stage: string): Tools.DeploymentRecord | null {
-    const pathDeployment = this.root(`.deployment/${stage}.json`)
+  // loadDeployment(stage: string): Tools.DeploymentRecord | null {
+  //   const pathDeployment = this.root(`.deployment/${stage}.json`)
 
-    if (this.stat(pathDeployment)) {
-      return this.loadJSON(pathDeployment)
-    }
-    return null
-  },
+  //   if (this.stat(pathDeployment)) {
+  //     return this.loadJSON(pathDeployment)
+  //   }
+  //   return null
+  // },
 
-  saveDeployment(stage: string, content: Tools.DeploymentRecord) {
-    const dirDeployment = this.root('.deployment')
-    const pathDeployment = this.root(`.deployment/${stage}.json`)
-    if (!this.stat(dirDeployment)) {
-      fs.mkdirSync(dirDeployment)
-    }
-    fs.writeFileSync(pathDeployment, JSON.stringify(content, null, 4))
-  },
+  // saveDeployment(stage: string, content: Tools.DeploymentRecord) {
+  //   const dirDeployment = this.root('.deployment')
+  //   const pathDeployment = this.root(`.deployment/${stage}.json`)
+  //   if (!this.stat(dirDeployment)) {
+  //     fs.mkdirSync(dirDeployment)
+  //   }
+  //   fs.writeFileSync(pathDeployment, JSON.stringify(content, null, 4))
+  // },
 }
 
 export namespace Tools {
@@ -202,9 +202,9 @@ export namespace Tools {
     contentType: string
   }
 
-  export interface DeploymentRecord {
-    ApiGateway: {
-      id: string
-    }
-  }
+  // export interface DeploymentRecord {
+  //   ApiGateway: {
+  //     id: string
+  //   }
+  // }
 }
