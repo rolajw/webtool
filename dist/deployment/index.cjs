@@ -267,7 +267,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     const indexFile = `index.${now}.html`;
     const rewrites = settings.rewriters ? JSON.stringify(settings.rewriters) : "{}";
     const s3 = new AWSS3__namespace.S3({ region: env2.AwsRegion });
-    const cloudfront = new AWSCloudfront__namespace.CloudFront(env2.AwsConfiguration);
+    const cloudfront = new AWSCloudfront__namespace.CloudFront({ region: env2.AwsRegion });
     if (!env2.WebRoot.startsWith("website")) {
       throw new Error(`WebRoot must start with website.  Found: ${env2.WebRoot}`);
     }

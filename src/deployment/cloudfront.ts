@@ -18,7 +18,7 @@ export const deployCloudFront = async function (settings: DeployCloudFront.Setti
   const rewrites = settings.rewriters ? JSON.stringify(settings.rewriters) : '{}'
 
   const s3 = new AWSS3.S3({ region: env.AwsRegion })
-  const cloudfront = new AWSCloudfront.CloudFront(env.AwsConfiguration)
+  const cloudfront = new AWSCloudfront.CloudFront({ region: env.AwsRegion })
 
   if (!env.WebRoot.startsWith('website')) {
     throw new Error(`WebRoot must start with website.  Found: ${env.WebRoot}`)
