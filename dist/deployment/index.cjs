@@ -529,7 +529,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       {
         client: lambda,
         maxWaitTime: 6e4,
-        minDelay: 5e3
+        minDelay: 5
       },
       {
         FunctionName: env2.LambdaFunction

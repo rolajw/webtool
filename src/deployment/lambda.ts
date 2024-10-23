@@ -86,7 +86,7 @@ export const deployLambda = async function (settings: DeploymentLambda.Setting) 
     {
       client: lambda,
       maxWaitTime: 60000,
-      minDelay: 5000,
+      minDelay: 5,
     },
     {
       FunctionName: env.LambdaFunction,

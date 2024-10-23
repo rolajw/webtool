@@ -514,7 +514,7 @@ const deployLambda = async function(settings) {
     {
       client: lambda,
       maxWaitTime: 6e4,
-      minDelay: 5e3
+      minDelay: 5
     },
     {
       FunctionName: env2.LambdaFunction
