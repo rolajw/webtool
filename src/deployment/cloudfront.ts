@@ -213,12 +213,14 @@ async function clearFiles(settings: DeployCloudFront.Setting, uploads: DeployClo
     if (!ritem.Key) {
       continue
     }
-    const res = await s3.getObject({
-      Bucket: env.AwsS3,
-      Key: ritem.Key,
-    })
+    const resBody = await s3
+      .getObject({
+        Bucket: env.AwsS3,
+        Key: ritem.Key,
+      })
+      .then((r) => r.Body?.transformToString())
 
-    JSON.parse(res.Body?.toString() ?? '[]').forEach((item: DeployCloudFront.UploadItem) => {
+    JSON.parse(resBody ?? '[]').forEach((item: DeployCloudFront.UploadItem) => {
       if (!files.has(item.key)) {
         files.set(item.key, {
           key: item.key,

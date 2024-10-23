@@ -364,7 +364,6 @@ async function createCloudfrontInvalidations(paths, waiting = true) {
   });
 }
 async function clearFiles(settings, uploads) {
-  var _a;
   const env2 = deployenv();
   const s3 = new AWSS3.S3({ region: env2.AwsRegion });
   const now = (/* @__PURE__ */ new Date()).getTime();
@@ -398,11 +397,14 @@ async function clearFiles(settings, uploads) {
     if (!ritem.Key) {
       continue;
     }
-    const res2 = await s3.getObject({
+    const resBody = await s3.getObject({
       Bucket: env2.AwsS3,
       Key: ritem.Key
+    }).then((r) => {
+      var _a;
+      return (_a = r.Body) == null ? void 0 : _a.transformToString();
     });
-    JSON.parse(((_a = res2.Body) == null ? void 0 : _a.toString()) ?? "[]").forEach((item) => {
+    JSON.parse(resBody ?? "[]").forEach((item) => {
       if (!files.has(item.key)) {
         files.set(item.key, {
           key: item.key,
