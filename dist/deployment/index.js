@@ -456,10 +456,7 @@ async function clearFiles(settings, uploads) {
       }
     });
   }
-  const needUpdateds = Array.from(files.values()).filter((f) => f.hasUpdated).map((o) => `/${o.key}`);
-  if (needUpdateds.length) {
-    await createCloudfrontInvalidations(needUpdateds, settings.waitForInvalidations);
-  }
+  Array.from(files.values()).filter((f) => f.hasUpdated).map((o) => `/${o.key}`);
 }
 const deployLambda = async function(settings) {
   const env2 = deployenv();

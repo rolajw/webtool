@@ -471,10 +471,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
         }
       });
     }
-    const needUpdateds = Array.from(files.values()).filter((f) => f.hasUpdated).map((o) => `/${o.key}`);
-    if (needUpdateds.length) {
-      await createCloudfrontInvalidations(needUpdateds, settings.waitForInvalidations);
-    }
+    Array.from(files.values()).filter((f) => f.hasUpdated).map((o) => `/${o.key}`);
   }
   const deployLambda = async function(settings) {
     const env2 = deployenv();

@@ -287,9 +287,9 @@ async function clearFiles(settings: DeployCloudFront.Setting, uploads: DeployClo
     .filter((f) => f.hasUpdated)
     .map((o) => `/${o.key}`)
 
-  if (needUpdateds.length) {
-    await createCloudfrontInvalidations(needUpdateds, settings.waitForInvalidations)
-  }
+  // if (needUpdateds.length) {
+  //   await createCloudfrontInvalidations(needUpdateds, settings.waitForInvalidations)
+  // }
 }
 
 export namespace DeployCloudFront {
