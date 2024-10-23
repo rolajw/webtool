@@ -120,7 +120,7 @@ export const deployCloudFront = async function (settings: DeployCloudFront.Setti
 
 export async function createCloudfrontInvalidations(paths: string[], waiting = true) {
   const env = deployenv()
-  const cloudfront = new AWSCloudfront.CloudFront(env.AwsConfiguration)
+  const cloudfront = new AWSCloudfront.CloudFront({ region: env.AwsRegion })
 
   if (!env.DistributionId) {
     throw new Error('env.distributionid is required!!')
@@ -163,7 +163,7 @@ export async function createCloudfrontInvalidations(paths: string[], waiting = t
 
 async function clearFiles(settings: DeployCloudFront.Setting, uploads: DeployCloudFront.UploadItem[]) {
   const env = deployenv()
-  const s3 = new AWSS3.S3(env.AwsConfiguration)
+  const s3 = new AWSS3.S3({ region: env.AwsRegion })
   const now = new Date().getTime()
   const prefixUploads = `${env.WebRoot}/.uploads`
   const uploadRecord = `${prefixUploads}/v${env.Version}-${now}.json`.replaceAll('\\', '/')

@@ -342,7 +342,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   };
   async function createCloudfrontInvalidations(paths, waiting = true) {
     const env2 = deployenv();
-    const cloudfront = new AWSCloudfront__namespace.CloudFront(env2.AwsConfiguration);
+    const cloudfront = new AWSCloudfront__namespace.CloudFront({ region: env2.AwsRegion });
     if (!env2.DistributionId) {
       throw new Error("env.distributionid is required!!");
     }
@@ -381,7 +381,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   async function clearFiles(settings, uploads) {
     var _a;
     const env2 = deployenv();
-    const s3 = new AWSS3__namespace.S3(env2.AwsConfiguration);
+    const s3 = new AWSS3__namespace.S3({ region: env2.AwsRegion });
     const now = (/* @__PURE__ */ new Date()).getTime();
     const prefixUploads = `${env2.WebRoot}/.uploads`;
     const uploadRecord = `${prefixUploads}/v${env2.Version}-${now}.json`.replaceAll("\\", "/");
@@ -572,7 +572,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   const isWindows = process.platform === "win32";
   const deployLayer = async function(setting) {
     const env2 = deployenv();
-    const lambda = new AWSLambda__namespace.Lambda(env2.AwsConfiguration);
+    const lambda = new AWSLambda__namespace.Lambda({ region: env2.AwsRegion });
     const task = new Task();
     const items = await runBundle(setting);
     items.forEach((o) => {
@@ -668,7 +668,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
   }
   async function runDeploy(setting, pitem) {
     const env2 = deployenv();
-    const lambda = new AWSLambda__namespace.Lambda(env2.AwsConfiguration);
+    const lambda = new AWSLambda__namespace.Lambda({ region: env2.AwsRegion });
     console.info(`Publish Layer - ${pitem.name} ...`);
     const res = await lambda.publishLayerVersion({
       LayerName: pitem.name,

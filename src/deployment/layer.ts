@@ -8,7 +8,7 @@ const isWindows = process.platform === 'win32'
 
 export const deployLayer = async function (setting: DeployLayer.Setting) {
   const env = deployenv()
-  const lambda = new AWSLambda.Lambda(env.AwsConfiguration)
+  const lambda = new AWSLambda.Lambda({ region: env.AwsRegion })
 
   const task = new Task()
   const items = await runBundle(setting)
@@ -131,7 +131,7 @@ async function runBundle(setting: DeployLayer.Setting): Promise<DeployLayer.Laye
 
 async function runDeploy(setting: DeployLayer.Setting, pitem: DeployLayer.LayerPatch): Promise<void> {
   const env = deployenv()
-  const lambda = new AWSLambda.Lambda(env.AwsConfiguration)
+  const lambda = new AWSLambda.Lambda({ region: env.AwsRegion })
 
   console.info(`Publish Layer - ${pitem.name} ...`)
 

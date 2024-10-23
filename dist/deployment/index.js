@@ -327,7 +327,7 @@ const deployCloudFront = async function(settings) {
 };
 async function createCloudfrontInvalidations(paths, waiting = true) {
   const env2 = deployenv();
-  const cloudfront = new AWSCloudfront.CloudFront(env2.AwsConfiguration);
+  const cloudfront = new AWSCloudfront.CloudFront({ region: env2.AwsRegion });
   if (!env2.DistributionId) {
     throw new Error("env.distributionid is required!!");
   }
@@ -366,7 +366,7 @@ async function createCloudfrontInvalidations(paths, waiting = true) {
 async function clearFiles(settings, uploads) {
   var _a;
   const env2 = deployenv();
-  const s3 = new AWSS3.S3(env2.AwsConfiguration);
+  const s3 = new AWSS3.S3({ region: env2.AwsRegion });
   const now = (/* @__PURE__ */ new Date()).getTime();
   const prefixUploads = `${env2.WebRoot}/.uploads`;
   const uploadRecord = `${prefixUploads}/v${env2.Version}-${now}.json`.replaceAll("\\", "/");
@@ -557,7 +557,7 @@ const deployLambda = async function(settings) {
 const isWindows = process.platform === "win32";
 const deployLayer = async function(setting) {
   const env2 = deployenv();
-  const lambda = new AWSLambda.Lambda(env2.AwsConfiguration);
+  const lambda = new AWSLambda.Lambda({ region: env2.AwsRegion });
   const task = new Task();
   const items = await runBundle(setting);
   items.forEach((o) => {
@@ -653,7 +653,7 @@ async function runBundle(setting) {
 }
 async function runDeploy(setting, pitem) {
   const env2 = deployenv();
-  const lambda = new AWSLambda.Lambda(env2.AwsConfiguration);
+  const lambda = new AWSLambda.Lambda({ region: env2.AwsRegion });
   console.info(`Publish Layer - ${pitem.name} ...`);
   const res = await lambda.publishLayerVersion({
     LayerName: pitem.name,
