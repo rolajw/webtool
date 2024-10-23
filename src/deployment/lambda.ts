@@ -82,7 +82,7 @@ export const deployLambda = async function (settings: DeploymentLambda.Setting) 
     })
   }
   console.info('waiting funciton update...')
-  AWSLambda.waitUntilFunctionUpdatedV2(
+  await AWSLambda.waitUntilFunctionUpdatedV2(
     {
       client: lambda,
       maxWaitTime: 60000,

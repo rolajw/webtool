@@ -510,7 +510,7 @@ const deployLambda = async function(settings) {
     });
   }
   console.info("waiting funciton update...");
-  AWSLambda.waitUntilFunctionUpdatedV2(
+  await AWSLambda.waitUntilFunctionUpdatedV2(
     {
       client: lambda,
       maxWaitTime: 6e4,

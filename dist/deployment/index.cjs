@@ -525,7 +525,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
       });
     }
     console.info("waiting funciton update...");
-    AWSLambda__namespace.waitUntilFunctionUpdatedV2(
+    await AWSLambda__namespace.waitUntilFunctionUpdatedV2(
       {
         client: lambda,
         maxWaitTime: 6e4,
