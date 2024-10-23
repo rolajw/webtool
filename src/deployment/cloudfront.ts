@@ -17,7 +17,7 @@ export const deployCloudFront = async function (settings: DeployCloudFront.Setti
   const indexFile = `index.${now}.html`
   const rewrites = settings.rewriters ? JSON.stringify(settings.rewriters) : '{}'
 
-  const s3 = new AWSS3.S3(env.AwsConfiguration)
+  const s3 = new AWSS3.S3({ region: env.AwsRegion })
   const cloudfront = new AWSCloudfront.CloudFront(env.AwsConfiguration)
 
   if (!env.WebRoot.startsWith('website')) {
