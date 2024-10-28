@@ -20,7 +20,7 @@ export const deployLambda = async function (settings: DeploymentLambda.Setting) 
 
   /** writer .env */
   await fs.promises.readFile(`.env.${env.Stage}`).then((buffer) => fs.promises.writeFile(pathENV, buffer))
-
+  console.info('stage > ', env.Stage, pathENV)
   const files = settings.files.map((fpath) => `"${fpath}"`).join(' ')
 
   const ignores = (settings.ignoreFiles || []).map((s) => `"${s}"`)

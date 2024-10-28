@@ -484,6 +484,7 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
     tools.remove(pathBundleFile);
     tools.remove(pathENV);
     await fs.promises.readFile(`.env.${env2.Stage}`).then((buffer) => fs.promises.writeFile(pathENV, buffer));
+    console.info("stage > ", env2.Stage, pathENV);
     const files = settings.files.map((fpath) => `"${fpath}"`).join(" ");
     const ignores = (settings.ignoreFiles || []).map((s) => `"${s}"`);
     let ignoreOption = "";
