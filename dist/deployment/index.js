@@ -469,7 +469,6 @@ const deployLambda = async function(settings) {
   tools.remove(pathBundleFile);
   tools.remove(pathENV);
   await fs.promises.readFile(`.env.${env2.Stage}`).then((buffer) => fs.promises.writeFile(pathENV, buffer));
-  console.info("stage > ", env2.Stage, pathENV);
   const files = settings.files.map((fpath) => `"${fpath}"`).join(" ");
   const ignores = (settings.ignoreFiles || []).map((s) => `"${s}"`);
   let ignoreOption = "";
@@ -479,13 +478,14 @@ const deployLambda = async function(settings) {
     ignoreOption = ignores.map((s) => `-x ${s}`).join(" ");
   }
   if (isWindows2) {
-    await tools.spawn([`cd ${ROOT}`, `${tools.exe7z} a -tzip ${pathBundleFile} ${files} ${ignoreOption}`].join(" && "));
+    await tools.spawn(`${tools.exe7z} a -tzip ${pathBundleFile} ${files} ${ignoreOption}`, {
+      cwd: ROOT
+    });
+    await tools.spawn(`${tools.exe7z} a -tzip -mx=9 ${pathBundleFile} .env`, {
+      cwd: pathCache
+    });
   } else {
     await tools.spawn([`cd ${ROOT}`, `zip ${pathBundleFile} ${files} ${ignoreOption}`].join(" && "));
-  }
-  if (isWindows2) {
-    await tools.spawn([`cd ${pathCache}`, `${tools.exe7z} a -tzip -mx=9 ${pathBundleFile} .env`].join(" && "));
-  } else {
     await tools.spawn([`cd ${pathCache}`, `zip -gr9 ${pathBundleFile} .env`].join(" && "));
   }
   const func = await lambda.getFunction({ FunctionName: env2.LambdaFunction }).catch((err) => err.name === "ResourceNotFoundException" ? null : Promise.reject(err));
