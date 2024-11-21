@@ -205,6 +205,9 @@ var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "sy
           console.error("parse json error: ", model);
         }
       }
+      if (!enumName && Array.isArray(model.enum)) {
+        return model.enum.map((value) => typeof value === "string" ? `"${value}"` : value).join(" | ");
+      }
       if (enumData) {
         const out = this.outEnums;
         out.push(`export enum ${name} {`).indent(() => {

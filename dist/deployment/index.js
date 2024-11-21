@@ -276,13 +276,6 @@ const deployCloudFront = async function(settings) {
       if (isIgnore) {
         return null;
       }
-      if (item.filepath.endsWith("index.html")) {
-        console.info({
-          filepath: item.filepath,
-          path: path.resolve(settings.dir, "index.html"),
-          uploadpath: `${webpath}/${indexFile}`
-        });
-      }
       if (item.filepath === path.resolve(settings.dir, "index.html")) {
         item.uploadpath = `${webpath}/${indexFile}`;
       }

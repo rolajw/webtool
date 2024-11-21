@@ -229,6 +229,10 @@ export class OpenAPI {
       }
     }
 
+    if (!enumName && Array.isArray(model.enum)) {
+      return model.enum.map((value) => (typeof value === 'string' ? `"${value}"` : value)).join(' | ')
+    }
+
     if (enumData) {
       const out = this.outEnums
       out
