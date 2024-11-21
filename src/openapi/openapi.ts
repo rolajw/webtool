@@ -215,11 +215,6 @@ export class OpenAPI {
 
     let enumName = name || model.title
 
-    if (!enumName) {
-      console.error('errer enum: ', model)
-      throw new Error(`Enum.title is required`)
-    }
-
     let enumData: Record<string, any> | null = null
     if (description) {
       try {
@@ -231,6 +226,9 @@ export class OpenAPI {
 
     if (!enumName && Array.isArray(model.enum)) {
       return model.enum.map((value) => (typeof value === 'string' ? `"${value}"` : value)).join(' | ')
+    } else if (!enumName) {
+      console.error('errer enum: ', model)
+      throw new Error(`Enum.title is required`)
     }
 
     if (enumData) {

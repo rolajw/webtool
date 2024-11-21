@@ -191,10 +191,6 @@ class OpenAPI {
   genEnums(model, name) {
     const { description } = model;
     let enumName = name || model.title;
-    if (!enumName) {
-      console.error("errer enum: ", model);
-      throw new Error(`Enum.title is required`);
-    }
     let enumData = null;
     if (description) {
       try {
@@ -205,6 +201,9 @@ class OpenAPI {
     }
     if (!enumName && Array.isArray(model.enum)) {
       return model.enum.map((value) => typeof value === "string" ? `"${value}"` : value).join(" | ");
+    } else if (!enumName) {
+      console.error("errer enum: ", model);
+      throw new Error(`Enum.title is required`);
     }
     if (enumData) {
       const out = this.outEnums;
