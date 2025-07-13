@@ -53,7 +53,7 @@ export class OpenAPI {
   public genPathMethod(method: string, content: OpenAPITypes.MethodContent) {
     const out = this.outPaths
 
-    const query: Record<string, string> = {}
+    const query: Record<string, OpenAPITypes.ParameterModel> = {}
     const path: Record<string, string> = {}
     const header: Record<string, string> = {}
     if (content.parameters) {
@@ -69,7 +69,7 @@ export class OpenAPI {
         if (param.in === 'path') {
           path[param.name] = dataType === 'string' ? 'string | number' : dataType
         } else if (param.in === 'query') {
-          query[param.name] = dataType
+          query[param.name] = param
         } else if (param.in === 'header') {
           header[param.name] = dataType
         } else {
@@ -102,9 +102,14 @@ export class OpenAPI {
         out
           .push('query: {')
           .indent(() => {
-            Object.entries(query).forEach(([key, value]) => {
+            Object.entries(query).forEach(([key, param]) => {
               const k = key.includes('-') ? JSON.stringify(key) : key
-              out.push(`${k}: ${value}`)
+              const vtype = param.schema ? this.genModel(param.schema) : 'any'
+              if (param.required) {
+                out.push(`${k}: ${vtype}`)
+              } else {
+                out.push(`${k}?: ${vtype}`)
+              }
             })
           })
           .push('}')

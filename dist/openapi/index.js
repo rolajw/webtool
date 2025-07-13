@@ -76,7 +76,7 @@ class OpenAPI {
         if (param.in === "path") {
           path[param.name] = dataType === "string" ? "string | number" : dataType;
         } else if (param.in === "query") {
-          query[param.name] = dataType;
+          query[param.name] = param;
         } else if (param.in === "header") {
           header[param.name] = dataType;
         } else {
@@ -98,9 +98,14 @@ class OpenAPI {
     if (method.toUpperCase() === "GET") {
       if (Object.keys(query).length) {
         out.push("query: {").indent(() => {
-          Object.entries(query).forEach(([key, value]) => {
+          Object.entries(query).forEach(([key, param]) => {
             const k = key.includes("-") ? JSON.stringify(key) : key;
-            out.push(`${k}: ${value}`);
+            const vtype = param.schema ? this.genModel(param.schema) : "any";
+            if (param.required) {
+              out.push(`${k}: ${vtype}`);
+            } else {
+              out.push(`${k}?: ${vtype}`);
+            }
           });
         }).push("}");
       }
