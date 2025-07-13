@@ -96,11 +96,13 @@ class OpenAPI {
       }).push("}");
     }
     if (method.toUpperCase() === "GET") {
-      const queryBody = query == null ? void 0 : query.body;
       if (Object.keys(query).length) {
-        out.push(`body: ${queryBody}`);
-      } else {
-        out.push("body: undefined");
+        out.push("query: {").indent(() => {
+          Object.entries(query).forEach(([key, value]) => {
+            const k = key.includes("-") ? JSON.stringify(key) : key;
+            out.push(`${k}: ${value}`);
+          });
+        }).push("}");
       }
     } else {
       const reqData = this.getContent((_a = content.requestBody) == null ? void 0 : _a.content);

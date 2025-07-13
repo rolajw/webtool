@@ -98,12 +98,24 @@ export class OpenAPI {
     }
 
     if (method.toUpperCase() === 'GET') {
-      const queryBody = query?.body
       if (Object.keys(query).length) {
-        out.push(`body: ${queryBody}`)
-      } else {
-        out.push('body: undefined')
+        out
+          .push('query: {')
+          .indent(() => {
+            Object.entries(query).forEach(([key, value]) => {
+              const k = key.includes('-') ? JSON.stringify(key) : key
+              out.push(`${k}: ${value}`)
+            })
+          })
+          .push('}')
       }
+
+      // const queryBody = query?.body
+      // if (Object.keys(query).length) {
+      //   out.push(`body: ${queryBody}`)
+      // } else {
+      //   out.push('body: undefined')
+      // }
     } else {
       const reqData = this.getContent(content.requestBody?.content)
       console.info(' >> ', content, reqData)
