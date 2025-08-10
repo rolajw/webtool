@@ -59,7 +59,6 @@ export class OpenAPI {
     if (content.parameters) {
       content.parameters.forEach((param) => {
         if (!param.name) {
-          console.info(content)
           throw new Error(`Error param.name is empty`)
         }
 
@@ -123,7 +122,6 @@ export class OpenAPI {
       // }
     } else {
       const reqData = this.getContent(content.requestBody?.content)
-      console.info(' >> ', content, reqData)
       if (reqData) {
         const dataTypes = this.genModel(reqData)
         out.push(`body: ${dataTypes}`)
@@ -152,7 +150,7 @@ export class OpenAPI {
     }
 
     if (model.$ref) {
-      const mname = model.$ref.replace('#/components/schemas/', '')
+      const mname = this.formatModelName(model.$ref.replace('#/components/schemas/', ''))
       return this.enums.has(mname) ? mname : `SchemaComponents.${mname}`
     }
 
@@ -182,6 +180,16 @@ export class OpenAPI {
     }
   }
 
+  public formatModelName(name: string) {
+    if (name.includes('-')) {
+      name = name
+        .split('-')
+        .map((part, i) => (i > 0 ? part.charAt(0).toUpperCase() + part.slice(1) : part))
+        .join('')
+    }
+    return name
+  }
+
   public genModelObject(data: OpenAPITypes.SchemaModel, name?: string) {
     const out = this.outModels
     const { properties, required = [] } = data
@@ -199,15 +207,17 @@ export class OpenAPI {
       return properties ? ['{', objectTypes, '}'].join('\n') : objectTypes.join('')
     }
 
+    const modelName = this.formatModelName(name)
+
     if (!properties) {
-      out.push(`type ${name} = Record<string, any>`)
+      out.push(`type ${modelName} = Record<string, any>`)
     } else {
       out
-        .push(`interface ${name} {`)
+        .push(`interface ${modelName} {`)
         .indent(() => objectTypes.forEach((line) => out.push(line)))
         .push('}')
     }
-    return `SchemaComponents.${name}`
+    return `SchemaComponents.${modelName}`
   }
 
   public genModelArray(data: OpenAPITypes.SchemaModel, name?: string) {

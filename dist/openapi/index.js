@@ -68,7 +68,6 @@ class OpenAPI {
     if (content.parameters) {
       content.parameters.forEach((param) => {
         if (!param.name) {
-          console.info(content);
           throw new Error(`Error param.name is empty`);
         }
         const pdata = param.schema ?? this.getContent(param.content);
@@ -111,7 +110,6 @@ class OpenAPI {
       }
     } else {
       const reqData = this.getContent((_a = content.requestBody) == null ? void 0 : _a.content);
-      console.info(" >> ", content, reqData);
       if (reqData) {
         const dataTypes = this.genModel(reqData);
         out.push(`body: ${dataTypes}`);
@@ -136,7 +134,7 @@ class OpenAPI {
       return model.anyOf.map((item) => this.genModel(item)).join(" | ");
     }
     if (model.$ref) {
-      const mname = model.$ref.replace("#/components/schemas/", "");
+      const mname = this.formatModelName(model.$ref.replace("#/components/schemas/", ""));
       return this.enums.has(mname) ? mname : `SchemaComponents.${mname}`;
     }
     if (model.type === "object") {
@@ -162,6 +160,12 @@ class OpenAPI {
         return "unknown";
     }
   }
+  formatModelName(name) {
+    if (name.includes("-")) {
+      name = name.split("-").map((part, i) => i > 0 ? part.charAt(0).toUpperCase() + part.slice(1) : part).join("");
+    }
+    return name;
+  }
   genModelObject(data, name) {
     const out = this.outModels;
     const { properties, required = [] } = data;
@@ -175,12 +179,13 @@ class OpenAPI {
     if (!name) {
       return properties ? ["{", objectTypes, "}"].join("\n") : objectTypes.join("");
     }
+    const modelName = this.formatModelName(name);
     if (!properties) {
-      out.push(`type ${name} = Record<string, any>`);
+      out.push(`type ${modelName} = Record<string, any>`);
     } else {
-      out.push(`interface ${name} {`).indent(() => objectTypes.forEach((line) => out.push(line))).push("}");
+      out.push(`interface ${modelName} {`).indent(() => objectTypes.forEach((line) => out.push(line))).push("}");
     }
-    return `SchemaComponents.${name}`;
+    return `SchemaComponents.${modelName}`;
   }
   genModelArray(data, name) {
     const out = this.outModels;

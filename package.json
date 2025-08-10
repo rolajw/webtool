@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "webtool",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "module": "esnext",
   "type": "module",
   "exports": {
@@ -10,6 +10,7 @@
   },
   "scripts": {
     "build:all": "node build/build --all --prod",
+    "watch:openapi": "node build/build --openapi --watch",
     "build:deployment": "node build/build --deployment --prod",
     "watch:deployment": "node build/build --deployment --watch --prod"
   },

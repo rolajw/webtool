@@ -30,7 +30,7 @@ function hasArg(name) {
 function app() {
   const isBuildAll = hasArg('all')
   const buildDeployment = isBuildAll || hasArg('deployment')
-  const buildSchema = isBuildAll || hasArg('schema')
+  const buildOpenapi = isBuildAll || hasArg('openapi')
   const buildVitePlugin = isBuildAll || hasArg('vite-plugin')
 
   /**
@@ -45,7 +45,7 @@ function app() {
     runBuildCommand(`build/vite.config.deployment.ts`, options)
   }
 
-  if (buildSchema) {
+  if (buildOpenapi) {
     runBuildCommand(`build/vite.config.openapi.ts`, options)
   }
 
